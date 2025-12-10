@@ -44,15 +44,25 @@ pip install -r requirements.txt
 python app.py
 ```
 
+
 ### 方式二：Docker Compose（推荐）
 
 ```bash
+# 克隆项目
+git clone https://github.com/d1a0/NucLens.git
+cd NucLens
+
 docker-compose up -d
 ```
+
 
 ### 方式三：Docker
 
 ```bash
+# 克隆项目
+git clone https://github.com/d1a0/NucLens.git
+cd NucLens
+
 # 构建镜像
 docker build -t nuclens .
 
