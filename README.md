@@ -53,7 +53,7 @@ python app.py
 docker-compose up -d
 ```
 
-**方式二：纯 Docker**
+**方式二：Docker**
 ```bash
 docker build -t nuclens .
 docker run -d -p 5001:5001 --name nuclens nuclens
