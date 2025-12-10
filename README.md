@@ -11,6 +11,8 @@
   基于 <a href="https://github.com/projectdiscovery/nuclei">Nuclei</a> 的漏洞扫描管理框架
 </p>
 
+> 🤖 **本项目代码由 AI (Claude) 全程辅助编写**
+
 ---
 
 ## ✨ 功能特性
@@ -23,9 +25,9 @@
 - ⚙️ **系统设置** - 上传 Nuclei 二进制，支持 Windows/Linux/macOS
 - 👤 **个人中心** - 用户自行修改密码
 
-## 🚀 快速开始
+## 🚀 部署方式
 
-### 本地部署
+### 方式一：本地部署
 
 ```bash
 # 克隆项目
@@ -42,22 +44,27 @@ pip install -r requirements.txt
 python app.py
 ```
 
-访问 http://localhost:5001，默认账户：`admin` / `admin`
+### 方式二：Docker Compose（推荐）
 
-> ⚠️ 首次登录请修改默认密码
-
-### Docker 部署（二选一）
-
-**方式一：Docker Compose（推荐）**
 ```bash
 docker-compose up -d
 ```
 
-**方式二：Docker**
+### 方式三：Docker
+
 ```bash
+# 构建镜像
 docker build -t nuclens .
+
+# 运行容器
 docker run -d -p 5001:5001 --name nuclens nuclens
 ```
+
+---
+
+访问 http://localhost:5001，默认账户：`admin` / `admin`
+
+> ⚠️ 首次登录请修改默认密码
 
 ## 📁 项目结构
 
@@ -97,9 +104,3 @@ NucLens/
 
 - [Nuclei](https://github.com/projectdiscovery/nuclei) - 漏洞扫描引擎
 - [Flask](https://flask.palletsprojects.com/) - Web 框架
-
----
-
-<p align="center">
-  <sub>🤖 本项目由 AI (Claude) 全程辅助开发</sub>
-</p>
