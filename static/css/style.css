@@ -708,6 +708,67 @@ table td {
     color: #ff4d4f;
 }
 
+/* ========== Pagination ========== */
+.pagination-container {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.pagination {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.page-btn {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid #e0e0e0;
+    background: #fff;
+    color: #333;
+    font-size: 0.9rem;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-btn:hover:not([disabled]):not(.active) {
+    border-color: #667eea;
+    color: #667eea;
+    background: #f8f9fc;
+}
+
+.page-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+    border-color: transparent;
+    font-weight: 600;
+}
+
+.page-btn[disabled] {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: #f5f5f5;
+}
+
+.page-ellipsis {
+    padding: 0 8px;
+    color: #999;
+}
+
+.pagination-info {
+    margin-left: 16px;
+    color: #666;
+    font-size: 0.9rem;
+}
+
 /* ========== Action Buttons ========== */
 .actions-cell {
     white-space: nowrap;

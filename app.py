@@ -566,12 +566,18 @@ def upload_yaml_text():
 @jwt_required()
 def list_yaml_rules():
     """
-    列出规则.
+    列出规则（支持分页）.
     - Admin: sees all rules.
     - Editor: sees all 'verified' rules and their own 'pending' rules.
     - User: sees only 'verified' rules.
     """
     tags_filter = request.args.get('tags')
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # 限制每页最大数量
+    per_page = min(per_page, 100)
+    
     current_user_identity = get_jwt_identity()
     user = User.query.filter_by(username=current_user_identity).first()
 
@@ -599,8 +605,16 @@ def list_yaml_rules():
         tag_names = tags_filter.split(',')
         query = query.join(YamlRule.tags).filter(Tag.name.in_(tag_names))
 
-    rules = query.order_by(YamlRule.uploaded_at.desc()).all()
-    return jsonify([rule.to_dict() for rule in rules])
+    # 分页查询
+    pagination = query.order_by(YamlRule.uploaded_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return jsonify({
+        'rules': [rule.to_dict() for rule in pagination.items],
+        'total': pagination.total,
+        'page': pagination.page,
+        'per_page': pagination.per_page,
+        'pages': pagination.pages
+    })
 
 
 @app.route('/api/yaml/<int:rule_id>', methods=['PUT'])
@@ -753,8 +767,23 @@ def delete_yaml_rule(rule_id):
 @app.route('/api/tags', methods=['GET'])
 @jwt_required()
 def get_published_tags():
-    """获取所有已发布规则的唯一标签列表"""
-    tags = db.session.query(Tag.name).join(rule_tags).join(YamlRule).filter(YamlRule.status == 'published').distinct().all()
+    """获取已发布规则的标签列表（按使用频率排序，默认返回前10个）"""
+    limit = request.args.get('limit', 10, type=int)
+    all_tags = request.args.get('all', 'false').lower() == 'true'
+    
+    # 查询已发布规则的标签，按关联规则数量排序
+    from sqlalchemy import func
+    query = db.session.query(
+        Tag.name, 
+        func.count(rule_tags.c.rule_id).label('count')
+    ).join(rule_tags).join(YamlRule).filter(
+        YamlRule.status == 'published'
+    ).group_by(Tag.name).order_by(func.count(rule_tags.c.rule_id).desc())
+    
+    if not all_tags:
+        query = query.limit(limit)
+    
+    tags = query.all()
     tag_list = [tag[0] for tag in tags]
     return jsonify(tag_list)
 
@@ -787,16 +816,31 @@ def delete_scan_task(task_id):
 @app.route('/api/scan/history', methods=['GET'])
 @jwt_required()
 def get_scan_history():
-    """获取当前用户的所有扫描任务历史"""
+    """获取扫描任务历史（支持分页）"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    
+    # 限制每页最大数量
+    per_page = min(per_page, 100)
+    
     current_user = get_jwt_identity()
     # 如果是 admin，可以查看所有任务
     user = User.query.filter_by(username=current_user).first()
     if user and user.role == 'admin':
-        tasks = ScanTask.query.order_by(ScanTask.created_at.desc()).all()
+        query = ScanTask.query
     else:
-        tasks = ScanTask.query.filter_by(created_by=current_user).order_by(ScanTask.created_at.desc()).all()
+        query = ScanTask.query.filter_by(created_by=current_user)
     
-    return jsonify([task.to_dict() for task in tasks])
+    # 分页查询
+    pagination = query.order_by(ScanTask.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return jsonify({
+        'tasks': [task.to_dict() for task in pagination.items],
+        'total': pagination.total,
+        'page': pagination.page,
+        'per_page': pagination.per_page,
+        'pages': pagination.pages
+    })
 
 @app.route('/api/scan', methods=['POST'])
 @jwt_required()
@@ -912,9 +956,30 @@ def get_rule_content(rule_id):
 @app.route('/api/admin/users', methods=['GET'])
 @role_required(['admin'])
 def get_users():
-    """获取所有用户列表"""
-    users = User.query.all()
-    return jsonify([user.to_dict() for user in users])
+    """获取用户列表（支持分页）"""
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    status_filter = request.args.get('status', '')
+    
+    # 限制每页最大数量
+    per_page = min(per_page, 100)
+    
+    query = User.query
+    
+    # 状态筛选
+    if status_filter:
+        query = query.filter(User.status == status_filter)
+    
+    # 分页查询
+    pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    
+    return jsonify({
+        'users': [user.to_dict() for user in pagination.items],
+        'total': pagination.total,
+        'page': pagination.page,
+        'per_page': pagination.per_page,
+        'pages': pagination.pages
+    })
 
 
 @app.route('/api/admin/users/<int:user_id>/approve', methods=['POST'])

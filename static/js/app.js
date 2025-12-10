@@ -9,6 +9,10 @@ document.addEventListener('DOMContentLoaded', () => {
         rules: [],
         users: [],
         publishedTags: [],
+        // 分页状态
+        rulesPagination: { page: 1, perPage: 20, total: 0, pages: 0 },
+        usersPagination: { page: 1, perPage: 20, total: 0, pages: 0 },
+        scansPagination: { page: 1, perPage: 20, total: 0, pages: 0 },
     };
 
     // --- DOM Elements ---
@@ -214,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
             method: 'POST',
             body: JSON.stringify({ old_password, new_password }),
         }),
-        getRules: (tags = '') => api.request(`/yaml?tags=${tags}`),
+        getRules: (tags = '', page = 1, perPage = 20) => api.request(`/yaml?tags=${tags}&page=${page}&per_page=${perPage}`),
         getRuleContent: (ruleId) => api.request(`/yaml/${ruleId}/content`),
         uploadRule: (formData) => fetch('/api/yaml/upload', {
             method: 'POST',
@@ -230,15 +234,15 @@ document.addEventListener('DOMContentLoaded', () => {
         validateRule: (ruleId) => api.request(`/yaml/${ruleId}/validate`, { method: 'POST' }),
         publishRule: (ruleId) => api.request(`/yaml/${ruleId}/publish`, { method: 'POST' }),
         unpublishRule: (ruleId) => api.request(`/yaml/${ruleId}/unpublish`, { method: 'POST' }),
-        getPublishedTags: () => api.request('/tags'),
-        getScans: () => api.request('/scan/history'),
+        getPublishedTags: (all = false) => api.request(`/tags?all=${all}`),
+        getScans: (page = 1, perPage = 20) => api.request(`/scan/history?page=${page}&per_page=${perPage}`),
         submitScan: (target_url, tags) => api.request('/scan', {
             method: 'POST',
             body: JSON.stringify({ target_url, tags }),
         }),
         getScanSummary: (taskId) => api.request(`/scan/${taskId}/summary`),
         // User management
-        getUsers: () => api.request('/admin/users'),
+        getUsers: (page = 1, perPage = 20, status = '') => api.request(`/admin/users?page=${page}&per_page=${perPage}&status=${status}`),
         approveUser: (userId) => api.request(`/admin/users/${userId}/approve`, { method: 'POST' }),
         rejectUser: (userId) => api.request(`/admin/users/${userId}/reject`, { method: 'POST' }),
         deleteUser: (userId) => api.request(`/admin/users/${userId}`, { method: 'DELETE' }),
@@ -616,17 +620,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Event Handlers: Rules ---
-    filterRulesBtn.addEventListener('click', () => loadRules());
+    filterRulesBtn.addEventListener('click', () => loadRules(1));
     clearFilterBtn.addEventListener('click', () => {
         filterTagsInput.value = '';
         const statusSelect = document.getElementById('filter-status-select');
         if (statusSelect) statusSelect.value = '';
-        loadRules();
+        loadRules(1);
     });
 
     // 状态筛选下拉框
     const filterStatusSelect = document.getElementById('filter-status-select');
-    filterStatusSelect?.addEventListener('change', () => loadRules());
+    filterStatusSelect?.addEventListener('change', () => loadRules(1));
 
     // --- Event Handlers: Batch Operations ---
     const importRulesBtn = document.getElementById('import-rules-btn');
@@ -1051,7 +1055,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- Event Handlers: Users ---
-    filterUsersBtn?.addEventListener('click', () => loadUsers());
+    filterUsersBtn?.addEventListener('click', () => loadUsers(1));
 
     addUserBtn?.addEventListener('click', () => {
         document.getElementById('new-user-username').value = '';
@@ -1073,7 +1077,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await api.createUser(username, password, role);
             showToast('用户创建成功！', 'success');
             addUserModal.style.display = 'none';
-            loadUsers();
+            loadUsers(1);
         } catch (error) {
             console.error('创建用户错误:', error);
         }
@@ -1097,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
             await api.resetUserPassword(userId, newPassword);
             showToast('密码修改成功！', 'success');
             document.getElementById('edit-user-modal').style.display = 'none';
-            loadUsers();
+            loadUsers(state.usersPagination.page);
         } catch (error) {
             console.error('修改密码错误:', error);
         }
@@ -1124,18 +1128,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Data Loading ---
     async function loadDashboardStats() {
         try {
-            const rules = await api.getRules();
-            const scans = await api.getScans();
+            const rulesResult = await api.getRules('', 1, 1);
+            const scansResult = await api.getScans(1, 1);
             
-            statRules.textContent = rules ? rules.length : 0;
-            statPublished.textContent = rules ? rules.filter(r => r.status === 'published').length : 0;
-            statScans.textContent = scans ? scans.length : 0;
+            statRules.textContent = rulesResult ? rulesResult.total : 0;
+            // 获取已发布规则数需要单独查询，这里用总数代替
+            statPublished.textContent = rulesResult ? rulesResult.total : 0;
+            statScans.textContent = scansResult ? scansResult.total : 0;
 
             // 管理员显示待审核用户数
             if (state.role === 'admin') {
                 statPendingUsersCard.style.display = 'block';
-                const users = await api.getUsers();
-                const pendingCount = users ? users.filter(u => u.status === 'pending').length : 0;
+                const usersResult = await api.getUsers(1, 1, 'pending');
+                const pendingCount = usersResult ? usersResult.total : 0;
                 statPendingUsers.textContent = pendingCount;
             }
         } catch (error) {
@@ -1143,13 +1148,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function loadRules() {
+    async function loadRules(page = 1) {
         const filterText = filterTagsInput.value.trim().toLowerCase();
         const statusFilter = document.getElementById('filter-status-select')?.value || '';
         try {
-            // 获取所有规则（后端不筛选，前端做模糊匹配）
-            const rules = await api.getRules('');
-            let filteredRules = rules || [];
+            // 获取规则（分页）
+            const result = await api.getRules('', page, state.rulesPagination.perPage);
+            let filteredRules = result.rules || [];
             
             // 前端模糊筛选（支持标签和规则名称）
             if (filterText) {
@@ -1172,7 +1177,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             state.rules = filteredRules;
+            state.rulesPagination = {
+                ...state.rulesPagination,
+                page: result.page,
+                total: result.total,
+                pages: result.pages
+            };
+            
             renderRules(state.rules);
+            renderPagination('rules', state.rulesPagination, loadRules);
         } catch (error) {
             console.error('加载规则失败:', error);
         }
@@ -1180,10 +1193,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let scanPollingTimer = null;
 
-    async function loadScans() {
+    async function loadScans(page = 1) {
         try {
-            const scans = await api.getScans();
-            renderScans(scans || []);
+            const result = await api.getScans(page, state.scansPagination.perPage);
+            const scans = result.tasks || [];
+            
+            state.scansPagination = {
+                ...state.scansPagination,
+                page: result.page,
+                total: result.total,
+                pages: result.pages
+            };
+            
+            renderScans(scans);
+            renderPagination('scans', state.scansPagination, loadScans);
             
             // 检查是否有 running 状态的任务，如果有则自动轮询
             const hasRunning = scans && scans.some(s => s.status === 'running');
@@ -1201,8 +1224,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (scanPollingTimer) return; // 已经在轮询了
         scanPollingTimer = setInterval(async () => {
             try {
-                const scans = await api.getScans();
-                renderScans(scans || []);
+                const result = await api.getScans(state.scansPagination.page, state.scansPagination.perPage);
+                const scans = result.tasks || [];
+                renderScans(scans);
                 
                 // 如果没有 running 的任务了，停止轮询
                 const hasRunning = scans && scans.some(s => s.status === 'running');
@@ -1224,7 +1248,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadPublishedTags() {
         try {
-            const tags = await api.getPublishedTags();
+            // 默认只加载前10个最常用标签
+            const tags = await api.getPublishedTags(false);
             state.publishedTags = tags || [];
             renderAvailableTags('');
         } catch (error) {
@@ -1232,14 +1257,99 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    async function loadUsers() {
+    async function loadUsers(page = 1) {
         try {
-            const users = await api.getUsers();
-            state.users = users || [];
+            const statusFilter = filterUserStatus?.value || '';
+            const result = await api.getUsers(page, state.usersPagination.perPage, statusFilter);
+            state.users = result.users || [];
+            state.usersPagination = {
+                ...state.usersPagination,
+                page: result.page,
+                total: result.total,
+                pages: result.pages
+            };
             renderUsers(state.users);
+            renderPagination('users', state.usersPagination, loadUsers);
         } catch (error) {
             console.error('加载用户失败:', error);
         }
+    }
+    
+    // --- 分页渲染函数 ---
+    function renderPagination(type, pagination, loadFunction) {
+        const containerId = `${type}-pagination`;
+        let container = document.getElementById(containerId);
+        
+        // 如果容器不存在，创建它
+        if (!container) {
+            const tableContainer = document.querySelector(`#${type}-view .table-container`) || 
+                                   document.querySelector(`#${type}-table`)?.parentElement;
+            if (tableContainer) {
+                container = document.createElement('div');
+                container.id = containerId;
+                container.className = 'pagination-container';
+                tableContainer.after(container);
+            } else {
+                return;
+            }
+        }
+        
+        if (pagination.pages <= 1) {
+            container.innerHTML = '';
+            return;
+        }
+        
+        let html = '<div class="pagination">';
+        
+        // 上一页
+        html += `<button class="page-btn" ${pagination.page <= 1 ? 'disabled' : ''} data-page="${pagination.page - 1}">&laquo;</button>`;
+        
+        // 页码
+        const maxButtons = 5;
+        let startPage = Math.max(1, pagination.page - Math.floor(maxButtons / 2));
+        let endPage = Math.min(pagination.pages, startPage + maxButtons - 1);
+        
+        if (endPage - startPage < maxButtons - 1) {
+            startPage = Math.max(1, endPage - maxButtons + 1);
+        }
+        
+        if (startPage > 1) {
+            html += `<button class="page-btn" data-page="1">1</button>`;
+            if (startPage > 2) {
+                html += `<span class="page-ellipsis">...</span>`;
+            }
+        }
+        
+        for (let i = startPage; i <= endPage; i++) {
+            html += `<button class="page-btn ${i === pagination.page ? 'active' : ''}" data-page="${i}">${i}</button>`;
+        }
+        
+        if (endPage < pagination.pages) {
+            if (endPage < pagination.pages - 1) {
+                html += `<span class="page-ellipsis">...</span>`;
+            }
+            html += `<button class="page-btn" data-page="${pagination.pages}">${pagination.pages}</button>`;
+        }
+        
+        // 下一页
+        html += `<button class="page-btn" ${pagination.page >= pagination.pages ? 'disabled' : ''} data-page="${pagination.page + 1}">&raquo;</button>`;
+        
+        // 总数信息
+        html += `<span class="pagination-info">共 ${pagination.total} 条</span>`;
+        
+        html += '</div>';
+        
+        container.innerHTML = html;
+        
+        // 绑定点击事件
+        container.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
+            btn.onclick = () => {
+                const page = parseInt(btn.dataset.page);
+                if (page && page !== pagination.page) {
+                    loadFunction(page);
+                }
+            };
+        });
     }
 
     // --- Rendering ---
@@ -1434,10 +1544,8 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderUsers(users) {
         usersTableBody.innerHTML = '';
         
-        const filterStatus = filterUserStatus?.value || '';
-        const filtered = filterStatus ? users.filter(u => u.status === filterStatus) : users;
-
-        if (!filtered || filtered.length === 0) {
+        // 后端已经做了状态筛选，这里直接使用
+        if (!users || users.length === 0) {
             usersTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">没有找到用户</td></tr>';
             return;
         }
@@ -1448,7 +1556,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'user': '用户'
         };
         
-        filtered.forEach(user => {
+        users.forEach(user => {
             const row = document.createElement('tr');
             
             const statusClass = {
@@ -1594,7 +1702,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (confirm('确定要删除这个规则吗？')) {
                         await api.deleteRule(ruleId);
                         showToast('规则已删除', 'success');
-                        loadRules();
+                        loadRules(state.rulesPagination.page);
                     }
                     break;
             }
@@ -1610,18 +1718,18 @@ document.addEventListener('DOMContentLoaded', () => {
                 case 'approve':
                     await api.approveUser(userId);
                     showToast('用户已通过审核', 'success');
-                    loadUsers();
+                    loadUsers(state.usersPagination.page);
                     break;
                 case 'reject':
                     await api.rejectUser(userId);
                     showToast('用户申请已拒绝', 'info');
-                    loadUsers();
+                    loadUsers(state.usersPagination.page);
                     break;
                 case 'delete':
                     if (confirm('确定要删除这个用户吗？')) {
                         await api.deleteUser(userId);
                         showToast('用户已删除', 'success');
-                        loadUsers();
+                        loadUsers(state.usersPagination.page);
                     }
                     break;
             }
