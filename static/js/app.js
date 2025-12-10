@@ -1323,7 +1323,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         // 每页显示数量下拉框（放在页码右边）
         html += `<select class="page-size-select" data-type="${type}">`;
-        [10, 20, 50, 100].forEach(size => {
+        [10, 20, 50, 100, 500, 1000].forEach(size => {
             html += `<option value="${size}" ${pagination.perPage === size ? 'selected' : ''}>${size}条/页</option>`;
         });
         html += `</select>`;
