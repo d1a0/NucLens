@@ -1302,18 +1302,6 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let html = '<div class="pagination">';
         
-        // 每页显示数量下拉框
-        html += `<span class="pagination-label">每页</span>`;
-        html += `<select class="page-size-select" data-type="${type}">`;
-        [10, 20, 50, 100].forEach(size => {
-            html += `<option value="${size}" ${pagination.perPage === size ? 'selected' : ''}>${size}</option>`;
-        });
-        html += `</select>`;
-        html += `<span class="pagination-label">条</span>`;
-        
-        // 分隔符
-        html += `<span class="pagination-divider">|</span>`;
-        
         // 上一页
         html += `<button class="page-btn" ${pagination.page <= 1 ? 'disabled' : ''} data-page="${pagination.page - 1}">&laquo;</button>`;
         
@@ -1351,8 +1339,18 @@ document.addEventListener('DOMContentLoaded', () => {
         // 下一页
         html += `<button class="page-btn" ${pagination.page >= pagination.pages ? 'disabled' : ''} data-page="${pagination.page + 1}">&raquo;</button>`;
         
+        // 分隔符
+        html += `<span class="pagination-divider">|</span>`;
+        
+        // 每页显示数量下拉框（放在页码右边）
+        html += `<select class="page-size-select" data-type="${type}">`;
+        [10, 20, 50, 100].forEach(size => {
+            html += `<option value="${size}" ${pagination.perPage === size ? 'selected' : ''}>${size}条/页</option>`;
+        });
+        html += `</select>`;
+        
         // 总数信息
-        html += `<span class="pagination-info">共 ${pagination.total} 条</span>`;
+        html += `<span class="pagination-info">共${pagination.total}条</span>`;
         
         html += '</div>';
         
