@@ -24,9 +24,9 @@ RUN wget -q https://gh-proxy.org/https://github.com/projectdiscovery/nuclei/rele
     && rm nuclei_${NUCLEI_VERSION}_linux_amd64.zip \
     && chmod +x /usr/local/bin/nuclei
 
-# 复制依赖文件并安装
+# 复制依赖文件并安装（使用清华源加速）
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 复制应用代码
 COPY app.py .
