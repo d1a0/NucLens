@@ -18,12 +18,15 @@ import yaml
 # App initialization
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
+# 数据目录（用于持久化数据库等）
+datadir = os.path.join(basedir, 'data')
+os.makedirs(datadir, exist_ok=True)
 # 默认 Nuclei 可执行文件路径（会被系统设置覆盖）
 DEFAULT_NUCLEI_PATH = os.path.join(basedir, 'bin', 'nuclei.exe')
 # Nuclei 二进制文件上传目录
 NUCLEI_BIN_FOLDER = os.path.join(basedir, 'bin')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'app.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(datadir, 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # JWT密钥：优先使用环境变量，否则自动生成随机密钥
 app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY') or secrets.token_hex(32)
