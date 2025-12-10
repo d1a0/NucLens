@@ -42,11 +42,6 @@ RUN ln -s /usr/local/bin/nuclei /app/bin/nuclei
 # 暴露端口
 EXPOSE 5001
 
-# 创建非 root 用户运行应用
-RUN useradd -m -u 1000 nuclens && \
-    chown -R nuclens:nuclens /app
-USER nuclens
-
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:5001/ || exit 1
