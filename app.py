@@ -1557,4 +1557,8 @@ if __name__ == '__main__':
             db.session.add(admin)
             db.session.commit()
             print("默认管理员账户已创建: admin / admin")
-    app.run(debug=True, port=5001)
+    
+    # 生产环境使用0.0.0.0监听所有网卡，关闭debug
+    import os
+    debug_mode = os.environ.get('FLASK_ENV') != 'production'
+    app.run(host='0.0.0.0', port=5001, debug=debug_mode)
