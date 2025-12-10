@@ -106,6 +106,59 @@ NucLens/
 3. 建议内网部署
 4. 定期备份 `app.db`
 
+## 🔄 版本更新
+
+### 本地部署更新
+
+```bash
+cd NucLens
+git pull
+pip install -r requirements.txt  # 如有新依赖
+python app.py
+```
+
+### Docker Compose 更新（推荐）
+
+```bash
+cd NucLens
+git pull
+docker-compose up -d --build
+```
+
+> ✅ **数据安全**：docker-compose.yml 已配置 volume 持久化，更新不会丢失数据库、规则和扫描结果。
+
+### Docker 更新
+
+```bash
+cd NucLens
+git pull
+
+# 停止并删除旧容器（不删除数据卷）
+docker stop nuclens && docker rm nuclens
+
+# 重新构建并运行
+docker build -t nuclens .
+docker run -d -p 5001:5001 --name nuclens \
+  -v nuclens_data:/app \
+  -v $(pwd)/nuclei_rules:/app/nuclei_rules \
+  -v $(pwd)/scan_results:/app/scan_results \
+  nuclens
+```
+
+> ⚠️ **注意**：如果首次部署时未挂载 volume，更新前请先备份数据：
+> ```bash
+> docker cp nuclens:/app/app.db ./app.db.backup
+> ```
+
+### 数据持久化说明
+
+| 数据 | 存储位置 | 说明 |
+|------|----------|------|
+| 数据库 | `app.db` | 用户、规则元数据、扫描任务 |
+| 规则文件 | `nuclei_rules/` | YAML 规则文件 |
+| 扫描结果 | `scan_results/` | JSON 格式扫描报告 |
+| Nuclei | `bin/` | 扫描引擎二进制 |
+
 ## 📄 许可证
 
 [MIT License](LICENSE)
