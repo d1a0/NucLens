@@ -61,19 +61,23 @@ python app.py
 
 ### Docker 部署
 
-1. **构建镜像**
-```bash
-docker build -t nuclens .
-```
+以下两种方式**二选一**：
 
-2. **运行容器**
-```bash
-docker run -d -p 5001:5001 --name nuclens nuclens
-```
+#### 方式一：Docker Compose（推荐）
 
-3. **使用 Docker Compose**
 ```bash
 docker-compose up -d
+```
+> 自动构建镜像、配置持久化存储，一条命令完成部署
+
+#### 方式二：纯 Docker
+
+```bash
+# 构建镜像
+docker build -t nuclens .
+
+# 运行容器
+docker run -d -p 5001:5001 --name nuclens nuclens
 ```
 
 ## 📁 项目结构
@@ -149,9 +153,16 @@ NucLens/
 
 ## 📄 许可证
 
+
 本项目采用 [MIT License](LICENSE) 开源许可证。
 
 ## 🙏 致谢
 
 - [Nuclei](https://github.com/projectdiscovery/nuclei) - 强大的漏洞扫描引擎
 - [Flask](https://flask.palletsprojects.com/) - Python Web 框架
+
+---
+
+<p align="center">
+  <sub>🤖 本项目由 AI Coding (Claude) 辅助开发</sub>
+</p>
