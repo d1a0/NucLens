@@ -1,0 +1,28 @@
+id: OpenMetadata-DefaultLogin
+
+info:
+  name: OpenMetadata-DefaultLogin
+  author: iSee857
+  severity: high
+  description: |
+    OpenMetadata-DefaultLogin
+
+http:
+  - raw:
+      - |
+        POST /api/v1/users/login HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+
+        {"email":"admin@open-metadata.org","password":"YWRtaW4="}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: body
+        words:
+          - "refreshToken"
+          - "accessToken"

