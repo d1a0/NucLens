@@ -62,7 +62,7 @@ docker run -d -p 5001:5001 --name nuclens nuclens
 
 ---
 
-访问 http://localhost:5001，默认账户：`admin` / `admin`
+访问 http://localhost:5001，默认账户：admin / admin
 
 > ⚠️ 首次登录请修改默认密码
 
