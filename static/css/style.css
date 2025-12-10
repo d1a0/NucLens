@@ -718,20 +718,20 @@ table td {
 .pagination {
     display: flex;
     align-items: center;
-    gap: 6px;
-    flex-wrap: wrap;
+    gap: 4px;
+    flex-wrap: nowrap;
     justify-content: center;
 }
 
 .page-btn {
-    min-width: 36px;
-    height: 36px;
-    padding: 0 12px;
+    min-width: 28px;
+    height: 28px;
+    padding: 0 8px;
     border: 1px solid #e0e0e0;
     background: #fff;
     color: #333;
-    font-size: 0.9rem;
-    border-radius: 6px;
+    font-size: 0.8rem;
+    border-radius: 4px;
     cursor: pointer;
     transition: all 0.2s;
     display: flex;
@@ -759,34 +759,36 @@ table td {
 }
 
 .page-ellipsis {
-    padding: 0 8px;
+    padding: 0 4px;
     color: #999;
+    font-size: 0.8rem;
 }
 
 .pagination-info {
-    margin-left: 16px;
+    margin-left: 8px;
     color: #666;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
+    white-space: nowrap;
 }
 
 .pagination-label {
     color: #666;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
 }
 
 .pagination-divider {
     color: #ddd;
-    margin: 0 8px;
+    margin: 0 6px;
 }
 
 .page-size-select {
-    height: 36px;
-    padding: 0 8px;
+    height: 28px;
+    padding: 0 6px;
     border: 1px solid #e0e0e0;
-    border-radius: 6px;
+    border-radius: 4px;
     background: #fff;
     color: #333;
-    font-size: 0.9rem;
+    font-size: 0.8rem;
     cursor: pointer;
     outline: none;
     transition: all 0.2s;
