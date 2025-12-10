@@ -1,0 +1,1474 @@
+# -*- coding: utf-8 -*-
+import os
+import subprocess
+import threading
+import json
+import zipfile
+import io
+import tempfile
+from datetime import datetime
+from flask import Flask, request, jsonify, send_from_directory, render_template, send_file
+from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, JWTManager, verify_jwt_in_request
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
+import yaml
+
+# App initialization
+app = Flask(__name__)
+basedir = os.path.abspath(os.path.dirname(__file__))
+# 默认 Nuclei 可执行文件路径（会被系统设置覆盖）
+DEFAULT_NUCLEI_PATH = os.path.join(basedir, 'bin', 'nuclei.exe')
+# Nuclei 二进制文件上传目录
+NUCLEI_BIN_FOLDER = os.path.join(basedir, 'bin')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'app.db')
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['JWT_SECRET_KEY'] = 'your-super-secret-key-change-me'  # 请务必在生产环境中修改此密钥
+app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'nuclei_rules')
+app.config['SCAN_RESULTS_FOLDER'] = os.path.join(basedir, 'scan_results')
+
+db = SQLAlchemy(app)
+jwt = JWTManager(app)
+
+# --- Models ---
+class User(db.Model):
+    """用户模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+    role = db.Column(db.String(80), nullable=False, default='user')
+    status = db.Column(db.String(20), nullable=False, default='pending')  # pending, approved, rejected
+    must_change_password = db.Column(db.Boolean, default=False)  # 是否需要修改密码
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def set_password(self, password):
+        """设置密码，使用哈希加密"""
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        """校验密码"""
+        return check_password_hash(self.password_hash, password)
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'username': self.username,
+            'role': self.role,
+            'status': self.status,
+            'must_change_password': self.must_change_password,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+    def __repr__(self):
+        return f'<User {self.username}>'
+
+# Association Table for YamlRule and Tag
+rule_tags = db.Table('rule_tags',
+    db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True),
+    db.Column('rule_id', db.Integer, db.ForeignKey('yaml_rule.id'), primary_key=True)
+)
+
+class YamlRule(db.Model):
+    """YAML 规则模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False, unique=True)
+    file_path = db.Column(db.String(255), nullable=False)
+    uploaded_by = db.Column(db.String(80), nullable=False)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # 状态: pending (待验证), verified (已验证), published (已公开), failed (验证失败)
+    status = db.Column(db.String(50), nullable=False, default='pending')
+    tags = db.relationship('Tag', secondary=rule_tags, lazy='subquery',
+        backref=db.backref('rules', lazy=True))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'file_path': self.file_path,
+            'status': self.status, # <--- THE FIX IS HERE
+            'uploaded_by': self.uploaded_by,
+            'uploaded_at': self.uploaded_at.isoformat(),
+            'tags': [tag.name for tag in self.tags]
+        }
+
+class Tag(db.Model):
+    """标签模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(50), unique=True, nullable=False)
+
+class SystemSettings(db.Model):
+    """系统设置模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    key = db.Column(db.String(100), unique=True, nullable=False)
+    value = db.Column(db.Text, nullable=True)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    @staticmethod
+    def get(key, default=None):
+        """获取设置值"""
+        setting = SystemSettings.query.filter_by(key=key).first()
+        return setting.value if setting else default
+    
+    @staticmethod
+    def set(key, value):
+        """设置值"""
+        setting = SystemSettings.query.filter_by(key=key).first()
+        if setting:
+            setting.value = value
+        else:
+            setting = SystemSettings(key=key, value=value)
+            db.session.add(setting)
+        db.session.commit()
+        return setting
+
+# --- ScanTask Model ---
+class ScanTask(db.Model):
+    """扫描任务模型"""
+    id = db.Column(db.Integer, primary_key=True)
+    target_url = db.Column(db.String(255), nullable=False)
+    tags = db.Column(db.String(255), nullable=False)  # 逗号分隔的标签字符串
+    status = db.Column(db.String(50), default='pending')  # pending, running, completed, error
+    created_by = db.Column(db.String(80), nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    result_file_path = db.Column(db.String(255), nullable=True)
+    error_log = db.Column(db.Text, nullable=True)
+    findings_summary = db.Column(db.Text, nullable=True) # 存储发现的 template-id 列表
+
+    def to_dict(self):
+        # 安全解析 findings_summary
+        findings = None
+        if self.findings_summary and self.findings_summary.strip():
+            try:
+                findings = json.loads(self.findings_summary)
+            except json.JSONDecodeError:
+                findings = None
+        
+        return {
+            'id': self.id,
+            'target_url': self.target_url,
+            'tags': self.tags.split(',') if self.tags else [],
+            'status': self.status,
+            'initiated_by': self.created_by,
+            'created_at': self.created_at.isoformat(),
+            'result_file_path': self.result_file_path,
+            'error_log': self.error_log,
+            'findings_summary': findings
+        }
+
+# --- Helper Functions ---
+def get_nuclei_path():
+    """获取当前配置的 nuclei 路径"""
+    # 优先使用数据库中的设置
+    try:
+        custom_path = SystemSettings.get('nuclei_path')
+        if custom_path and os.path.isfile(custom_path):
+            return custom_path
+    except:
+        pass
+    # 回退到默认路径
+    return DEFAULT_NUCLEI_PATH
+
+# --- Background Scan Function ---
+def run_scan(task_id, app_context):
+    """在后台线程中运行 nuclei 扫描"""
+    with app_context:
+        # 使用新的 db.session.get() 方法，并修复了命令构建逻辑
+        task = db.session.get(ScanTask, task_id)
+        if not task:
+            return
+
+        task.status = 'running'
+        db.session.commit()
+
+        result_filename = f"scan_{task.id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.json"
+        result_filepath = os.path.join(app.config['SCAN_RESULTS_FOLDER'], result_filename)
+
+        tags_list = task.tags.split(',')
+        rules_to_run = set()
+        rules = YamlRule.query.join(YamlRule.tags).filter(
+            YamlRule.status == 'published',
+            Tag.name.in_(tags_list)
+        ).all()
+
+        for rule in rules:
+            rules_to_run.add(rule.file_path)
+
+        if not rules_to_run:
+            task.status = 'error'
+            task.error_log = f"错误: 找不到与标签 {task.tags} 关联的已公开规则。"
+            db.session.commit()
+            print(task.error_log)
+            return
+
+        # --- 正确的命令构建逻辑 ---
+        nuclei_path = get_nuclei_path()
+        command = [
+            nuclei_path,
+            '-u', task.target_url,
+            '-jsonl', # 使用 -jsonl 标志以获得逐行 JSON 输出
+            '-o', result_filepath
+        ]
+        # 为每个模板文件单独添加一个 -t 参数
+        for rule_path in rules_to_run:
+            command.extend(['-t', rule_path])
+        # ---------------------------
+
+        try:
+            subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
+            task.status = 'completed'
+            task.result_file_path = result_filepath
+
+            # 解析结果并存储 findings_summary 为 JSON 格式
+            findings_count = 0
+            found_templates = set()
+            with open(result_filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    try:
+                        finding = json.loads(line)
+                        if 'template-id' in finding:
+                            found_templates.add(finding['template-id'])
+                            findings_count += 1
+                    except json.JSONDecodeError:
+                        continue
+            # 保存为 JSON 字符串
+            task.findings_summary = json.dumps({
+                'total': findings_count,
+                'templates': sorted(list(found_templates))
+            })
+
+        except FileNotFoundError:
+            task.status = 'error'
+            task.error_log = "错误: 'nuclei' 命令未找到。请确保 bin/nuclei.exe 存在。"
+            print(task.error_log)
+        except subprocess.CalledProcessError as e:
+            task.status = 'error'
+            # 同时捕获 stdout 和 stderr
+            error_output = f"Nuclei exited with a non-zero status.\n--- STDOUT ---\n{e.stdout}\n--- STDERR ---\n{e.stderr}"
+            task.error_log = error_output
+            print(f"运行 nuclei 扫描任务 {task.id} 时出错:\n{error_output}")
+        except Exception as e:
+            task.status = 'error'
+            task.error_log = str(e)
+            print(f"扫描任务 {task.id} 发生意外错误: {e}")
+
+        db.session.commit()
+
+def parse_nuclei_output(result_filepath):
+    """解析 Nuclei JSON 输出文件并返回结构化数据"""
+    vulnerabilities = []
+    try:
+        with open(result_filepath, 'r', encoding='utf-8') as f:
+            for line in f:
+                try:
+                    finding = json.loads(line)
+                    vulnerabilities.append({
+                        "template-id": finding.get("template-id"),
+                        "severity": finding.get("info", {}).get("severity"),
+                        "matched-at": finding.get("matched-at"),
+                        "description": finding.get("info", {}).get("description"),
+                    })
+                except json.JSONDecodeError:
+                    # 忽略空行或格式错误的行
+                    continue
+        return {
+            "has_vulnerability": len(vulnerabilities) > 0,
+            "vulnerabilities": vulnerabilities
+        }
+    except FileNotFoundError:
+        # 返回一个元组，表示错误和状态码
+        return ({"msg": "结果文件未找到。"}, 404)
+    except Exception as e:
+        return ({"msg": f"读取或解析结果文件时出错: {e}"}, 500)
+
+# --- Decorators ---
+def role_required(required_roles):
+    """
+    自定义装饰器，用于验证用户角色权限
+    """
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            verify_jwt_in_request()
+            current_user_identity = get_jwt_identity()
+            user = User.query.filter_by(username=current_user_identity).first()
+            if not user or user.role not in required_roles:
+                return jsonify({"msg": "Forbidden: Insufficient permissions"}), 403
+            return fn(*args, **kwargs)
+        return wrapper
+    return decorator
+
+# --- API Endpoints ---
+@app.route('/')
+def index():
+    """提供前端应用页面"""
+    return render_template('index.html')
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    """用户申请注册接口（需要管理员审核）"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    role = data.get('role', 'user')
+
+    if not username or not password:
+        return jsonify({"msg": "Missing username or password"}), 400
+
+    if User.query.filter_by(username=username).first():
+        return jsonify({"msg": "User already exists"}), 409 # Conflict
+
+    # 只允许申请 user 和 editor 角色
+    if role not in ['editor', 'user']:
+        return jsonify({"msg": "只能申请普通用户或编辑者角色"}), 400
+
+    new_user = User(username=username, role=role, status='pending')
+    new_user.set_password(password)
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({"msg": "注册申请已提交，请等待管理员审核"}), 201
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    """用户登录接口"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    if not username or not password:
+        return jsonify({"msg": "Missing username or password"}), 400
+
+    user = User.query.filter_by(username=username).first()
+
+    if not user:
+        return jsonify({"msg": "用户名或密码错误"}), 401
+    
+    if not user.check_password(password):
+        return jsonify({"msg": "用户名或密码错误"}), 401
+    
+    # 检查用户状态
+    if user.status == 'pending':
+        return jsonify({"msg": "您的账户正在等待管理员审核"}), 403
+    if user.status == 'rejected':
+        return jsonify({"msg": "您的注册申请已被拒绝"}), 403
+    
+    # 在 access token 中添加角色信息
+    additional_claims = {"role": user.role}
+    access_token = create_access_token(identity=username, additional_claims=additional_claims)
+    refresh_token = create_refresh_token(identity=username)
+    return jsonify(
+        access_token=access_token, 
+        refresh_token=refresh_token, 
+        role=user.role,
+        must_change_password=user.must_change_password
+    )
+
+
+@app.route('/api/change-password', methods=['POST'])
+@jwt_required()
+def change_password():
+    """修改密码接口"""
+    data = request.get_json()
+    old_password = data.get('old_password')
+    new_password = data.get('new_password')
+    
+    if not old_password or not new_password:
+        return jsonify({"msg": "请提供旧密码和新密码"}), 400
+    
+    if len(new_password) < 6:
+        return jsonify({"msg": "新密码长度至少6位"}), 400
+    
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(username=current_user).first()
+    
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    
+    if not user.check_password(old_password):
+        return jsonify({"msg": "旧密码错误"}), 400
+    
+    user.set_password(new_password)
+    user.must_change_password = False
+    db.session.commit()
+    
+    return jsonify({"msg": "密码修改成功"})
+
+@app.route('/api/profile', methods=['GET'])
+@jwt_required()
+def get_profile():
+    """获取当前用户个人资料"""
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(username=current_user).first()
+    
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    
+    return jsonify(user.to_dict())
+
+@app.route('/api/profile', methods=['PUT'])
+@jwt_required()
+def update_profile():
+    """更新当前用户个人资料（仅密码）"""
+    data = request.get_json()
+    current_password = data.get('current_password')
+    new_password = data.get('new_password')
+    
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(username=current_user).first()
+    
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+    
+    # 修改密码
+    if new_password:
+        if not current_password:
+            return jsonify({"msg": "请输入当前密码"}), 400
+        
+        if not user.check_password(current_password):
+            return jsonify({"msg": "当前密码错误"}), 400
+        
+        if len(new_password) < 6:
+            return jsonify({"msg": "新密码长度至少6位"}), 400
+        
+        user.set_password(new_password)
+        user.must_change_password = False
+        db.session.commit()
+        return jsonify({"msg": "密码修改成功"})
+    
+    return jsonify({"msg": "没有要更新的内容"})
+
+@app.route('/api/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    """刷新 Access Token 接口"""
+    current_user = get_jwt_identity()
+    new_access_token = create_access_token(identity=current_user)
+    return jsonify(access_token=new_access_token)
+
+# --- YAML Rule Endpoints ---
+@app.route('/api/yaml/upload', methods=['POST'])
+@role_required(['admin', 'editor'])
+def upload_yaml():
+    """上传 YAML 规则文件，初始状态为 pending"""
+    if 'file' not in request.files:
+        return jsonify({"msg": "No file part"}), 400
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"msg": "No selected file"}), 400
+
+    if not file or not file.filename.endswith(('.yaml', '.yml')):
+        return jsonify({"msg": "Invalid file type, please upload a .yaml or .yml file"}), 400
+
+    filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
+
+    # 先保存文件
+    file.save(filepath)
+
+    try:
+        # 独立的作用域来读取和解析文件，确保文件句柄被释放
+        with open(filepath, 'r', encoding='utf-8') as f:
+            yaml_content = yaml.safe_load(f)
+
+        if not isinstance(yaml_content, dict):
+            raise ValueError("Invalid YAML format: content is not a dictionary.")
+
+        rule_id = yaml_content.get('id')
+        if not rule_id:
+            raise ValueError("YAML file must contain an 'id' field.")
+
+        # 检查此规则 ID 是否已存在于数据库中
+        if YamlRule.query.filter_by(name=rule_id).first():
+            raise ValueError(f"A rule with the id '{rule_id}' already exists in the database.")
+
+    except (yaml.YAMLError, ValueError) as e:
+        # 如果解析或验证失败，删除已上传的文件
+        os.remove(filepath)
+        return jsonify({"msg": f"Error processing file: {e}"}), 400
+    except Exception as e:
+        # 捕获其他意外错误，例如权限问题
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        return jsonify({"msg": f"An unexpected error occurred during file processing: {e}"}), 500
+
+    # 文件有效，创建数据库记录
+    current_user = get_jwt_identity()
+    new_rule = YamlRule(
+        name=rule_id,
+        file_path=filepath,
+        uploaded_by=current_user,
+        status='pending'  # 初始状态为待验证
+    )
+
+    db.session.add(new_rule)
+    db.session.commit()
+
+    return jsonify({"msg": "Rule uploaded successfully and is pending validation.", "rule": new_rule.to_dict()}), 201
+
+
+@app.route('/api/yaml/upload-text', methods=['POST'])
+@jwt_required()
+def upload_yaml_text():
+    """通过文本内容上传 YAML 规则"""
+    data = request.get_json()
+    content = data.get('content')
+    
+    if not content:
+        return jsonify({"msg": "No content provided"}), 400
+    
+    try:
+        yaml_content = yaml.safe_load(content)
+        
+        if not isinstance(yaml_content, dict):
+            raise ValueError("Invalid YAML format: content is not a dictionary.")
+        
+        rule_id = yaml_content.get('id')
+        if not rule_id:
+            raise ValueError("YAML content must contain an 'id' field.")
+        
+        # 检查此规则 ID 是否已存在于数据库中
+        if YamlRule.query.filter_by(name=rule_id).first():
+            raise ValueError(f"A rule with the id '{rule_id}' already exists in the database.")
+        
+        # 保存到文件
+        filename = f"{rule_id}.yaml"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        
+        if os.path.exists(filepath):
+            raise ValueError(f"A rule file with name '{filename}' already exists.")
+        
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        # 创建数据库记录
+        current_user = get_jwt_identity()
+        new_rule = YamlRule(
+            name=rule_id,
+            file_path=filepath,
+            uploaded_by=current_user,
+            status='pending'
+        )
+        
+        db.session.add(new_rule)
+        db.session.commit()
+        
+        return jsonify({"msg": "Rule created successfully and is pending validation.", "rule": new_rule.to_dict()}), 201
+        
+    except yaml.YAMLError as e:
+        return jsonify({"msg": f"Invalid YAML syntax: {e}"}), 400
+    except ValueError as e:
+        return jsonify({"msg": str(e)}), 400
+    except Exception as e:
+        return jsonify({"msg": f"An unexpected error occurred: {e}"}), 500
+
+
+@app.route('/api/yaml', methods=['GET'])
+@jwt_required()
+def list_yaml_rules():
+    """
+    列出规则.
+    - Admin: sees all rules.
+    - Editor: sees all 'verified' rules and their own 'pending' rules.
+    - User: sees only 'verified' rules.
+    """
+    tags_filter = request.args.get('tags')
+    current_user_identity = get_jwt_identity()
+    user = User.query.filter_by(username=current_user_identity).first()
+
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    query = YamlRule.query
+
+    if user.role == 'admin':
+        # 管理员可以看到所有规则
+        pass
+    elif user.role == 'editor':
+        # 编辑者可以看到所有已公开规则和自己上传的所有状态的规则
+        query = query.filter(
+            db.or_(
+                YamlRule.status == 'published',
+                YamlRule.uploaded_by == current_user_identity
+            )
+        )
+    else:  # 'user'
+        # 普通用户只能看到已公开的规则
+        query = query.filter(YamlRule.status == 'published')
+
+    if tags_filter:
+        tag_names = tags_filter.split(',')
+        query = query.join(YamlRule.tags).filter(Tag.name.in_(tag_names))
+
+    rules = query.order_by(YamlRule.uploaded_at.desc()).all()
+    return jsonify([rule.to_dict() for rule in rules])
+
+
+@app.route('/api/yaml/<int:rule_id>', methods=['PUT'])
+@jwt_required()
+def update_yaml_rule(rule_id):
+    """
+    更新规则.
+    - Admin: 可以为任何规则更新 status 和 tags.
+    - Editor: 只能为自己上传的 'pending' 状态的规则更新 tags.
+    """
+    rule = YamlRule.query.get_or_404(rule_id)
+    data = request.get_json()
+    
+    current_user_identity = get_jwt_identity()
+    user = User.query.filter_by(username=current_user_identity).first()
+
+    if not user:
+        return jsonify({"msg": "User not found"}), 404
+
+    is_admin = user.role == 'admin'
+    is_owner = rule.uploaded_by == current_user_identity
+    is_editor = user.role == 'editor'
+
+    # 管理员可以编辑任何规则
+    # 编辑者只能编辑自己上传的、且状态为 pending 的规则
+    can_edit_tags = is_admin or (is_editor and is_owner and rule.status == 'pending')
+    
+    if not can_edit_tags:
+        return jsonify({"msg": "Forbidden: You do not have permission to edit this rule's tags."}), 403
+
+    if 'tags' in data:
+        tags_list = data.get('tags', [])
+        if not isinstance(tags_list, list):
+            return jsonify({"msg": "tags must be a list of strings"}), 400
+        
+        rule.tags.clear()
+        for tag_name in tags_list:
+            tag = Tag.query.filter_by(name=tag_name).first()
+            if not tag:
+                tag = Tag(name=tag_name)
+                db.session.add(tag)
+            rule.tags.append(tag)
+
+    # 只有管理员可以更新状态
+    if 'status' in data and is_admin:
+        new_status = data['status']
+        if new_status not in ['pending', 'verified', 'published', 'failed']:
+            return jsonify({"msg": "Invalid status."}), 400
+        
+        # 只有在规则有标签时才能将其设置为 "verified" 或 "published"
+        if new_status in ['verified', 'published'] and not rule.tags:
+            return jsonify({"msg": f"Cannot {new_status} a rule with no tags."}), 400
+
+        rule.status = new_status
+    
+    db.session.commit()
+    return jsonify({"msg": "Rule updated successfully", "rule": rule.to_dict()})
+
+
+@app.route('/api/yaml/<int:rule_id>/validate', methods=['POST'])
+@role_required(['admin', 'editor'])
+def validate_yaml_rule(rule_id):
+    """(Admin & Editor) 验证规则, 成功则状态变为 'verified', 失败则为 'failed'"""
+    rule = YamlRule.query.get_or_404(rule_id)
+    current_user_identity = get_jwt_identity()
+    user = User.query.filter_by(username=current_user_identity).first()
+
+    # 权限检查: 管理员或规则所有者(编辑)
+    if not (user.role == 'admin' or (user.role == 'editor' and rule.uploaded_by == current_user_identity)):
+        return jsonify({"msg": "Forbidden: You can only validate your own rules."}), 403
+
+    if rule.status not in ['pending', 'failed']:
+        return jsonify({"msg": f"Rule is not in a valid state for validation (current: {rule.status})."}), 400
+
+    if not os.path.exists(rule.file_path):
+        return jsonify({"msg": "Rule file not found on server."}), 404
+
+    nuclei_path = get_nuclei_path()
+    command = [nuclei_path, '-t', rule.file_path, '-validate']
+    
+    try:
+        result = subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
+        rule.status = 'verified'
+        db.session.commit()
+        return jsonify({
+            "msg": "Validation successful. Rule status is now 'verified'.",
+            "output": result.stdout.strip(),
+            "rule": rule.to_dict()
+        })
+    except FileNotFoundError:
+        return jsonify({"msg": "Error: 'nuclei' command not found. Please ensure bin/nuclei.exe exists."}), 500
+    except subprocess.CalledProcessError as e:
+        rule.status = 'failed'
+        db.session.commit()
+        return jsonify({
+            "msg": "Validation failed. The rule status is now 'failed'.",
+            "error": e.stderr.strip(),
+            "rule": rule.to_dict()
+        }), 400
+
+@app.route('/api/yaml/<int:rule_id>/publish', methods=['POST'])
+@role_required(['admin'])
+def publish_yaml_rule(rule_id):
+    """(Admin only) 将已验证的规则发布为公开状态"""
+    rule = YamlRule.query.get_or_404(rule_id)
+
+    if rule.status != 'verified':
+        return jsonify({"msg": "Only verified rules can be published."}), 400
+
+    rule.status = 'published'
+    db.session.commit()
+
+    return jsonify({"msg": "Rule successfully published.", "rule": rule.to_dict()})
+
+
+@app.route('/api/yaml/<int:rule_id>/unpublish', methods=['POST'])
+@role_required(['admin'])
+def unpublish_yaml_rule(rule_id):
+    """(Admin only) 取消发布规则，状态从 'published' 变回 'verified'"""
+    rule = YamlRule.query.get_or_404(rule_id)
+
+    if rule.status != 'published':
+        return jsonify({"msg": "Only published rules can be unpublished."}), 400
+
+    rule.status = 'verified'
+    db.session.commit()
+
+    return jsonify({"msg": "Rule successfully unpublished.", "rule": rule.to_dict()})
+
+
+@app.route('/api/yaml/<int:rule_id>', methods=['DELETE'])
+@role_required(['admin'])
+def delete_yaml_rule(rule_id):
+    """删除规则"""
+    rule = YamlRule.query.get_or_404(rule_id)
+
+    try:
+        os.remove(rule.file_path)
+    except FileNotFoundError:
+        # 如果文件已不存在，我们仍然继续从数据库中删除记录
+        pass
+    except Exception as e:
+        return jsonify({"msg": f"Error deleting file: {e}"}), 500
+
+    db.session.delete(rule)
+    db.session.commit()
+    return jsonify({"msg": "Rule deleted successfully"})
+
+# --- Tags Endpoint ---
+@app.route('/api/tags', methods=['GET'])
+@jwt_required()
+def get_published_tags():
+    """获取所有已发布规则的唯一标签列表"""
+    tags = db.session.query(Tag.name).join(rule_tags).join(YamlRule).filter(YamlRule.status == 'published').distinct().all()
+    tag_list = [tag[0] for tag in tags]
+    return jsonify(tag_list)
+
+@app.route('/api/scan/<int:task_id>', methods=['DELETE'])
+@jwt_required()
+def delete_scan_task(task_id):
+    """删除扫描任务及其结果文件"""
+    task = ScanTask.query.get_or_404(task_id)
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(username=current_user).first()
+
+    # 仅管理员或任务所有者可删除
+    if not (user.role == 'admin' or task.created_by == current_user):
+        return jsonify({"msg": "Forbidden: You do not have permission to delete this task."}), 403
+
+    # 删除结果文件
+    if task.result_file_path and os.path.exists(task.result_file_path):
+        try:
+            os.remove(task.result_file_path)
+        except Exception as e:
+            print(f"删除结果文件 {task.result_file_path} 时出错: {e}")
+            # 即使文件删除失败，也继续删除数据库记录
+
+    db.session.delete(task)
+    db.session.commit()
+    return jsonify({"msg": "扫描任务已成功删除"})
+
+
+# --- Scan Endpoints ---
+@app.route('/api/scan/history', methods=['GET'])
+@jwt_required()
+def get_scan_history():
+    """获取当前用户的所有扫描任务历史"""
+    current_user = get_jwt_identity()
+    # 如果是 admin，可以查看所有任务
+    user = User.query.filter_by(username=current_user).first()
+    if user and user.role == 'admin':
+        tasks = ScanTask.query.order_by(ScanTask.created_at.desc()).all()
+    else:
+        tasks = ScanTask.query.filter_by(created_by=current_user).order_by(ScanTask.created_at.desc()).all()
+    
+    return jsonify([task.to_dict() for task in tasks])
+
+@app.route('/api/scan', methods=['POST'])
+@jwt_required()
+def submit_scan():
+    """提交扫描任务"""
+    data = request.get_json()
+    target_url = data.get('target_url')
+    tags = data.get('tags')  # 期望是一个字符串列表
+
+    if not target_url or not tags:
+        return jsonify({"msg": "缺少 target_url 或 tags"}), 400
+
+    if not isinstance(tags, list):
+        return jsonify({"msg": "tags 必须是字符串列表"}), 400
+
+    current_user = get_jwt_identity()
+    tags_str = ",".join(tags)
+
+    new_task = ScanTask(
+        target_url=target_url,
+        tags=tags_str,
+        created_by=current_user
+    )
+    db.session.add(new_task)
+    db.session.commit()
+
+    # 在后台线程中运行扫描
+    scan_thread = threading.Thread(target=run_scan, args=(new_task.id, app.app_context()))
+    scan_thread.start()
+
+    return jsonify({"msg": "扫描任务已成功提交", "task_id": new_task.id}), 202
+
+@app.route('/api/scan/<int:task_id>', methods=['GET'])
+@jwt_required()
+def get_scan_status(task_id):
+    """获取任务状态"""
+    task = ScanTask.query.get_or_404(task_id)
+    return jsonify(task.to_dict())
+
+@app.route('/api/scan/<int:task_id>/summary', methods=['GET'])
+@jwt_required()
+def get_scan_summary(task_id):
+    """获取格式化的扫描结果摘要"""
+    task = ScanTask.query.get_or_404(task_id)
+    
+    # 基础信息
+    result = {
+        'id': task.id,
+        'target_url': task.target_url,
+        'tags': task.tags.split(',') if task.tags else [],
+        'status': task.status,
+        'error_log': task.error_log,
+        'findings': []
+    }
+
+    if task.status != 'completed':
+        return jsonify(result), 200
+
+    if not task.result_file_path:
+        return jsonify(result), 200
+
+    summary_data = parse_nuclei_output(task.result_file_path)
+
+    # 检查 parse_nuclei_output 是否返回了错误元组
+    if isinstance(summary_data, tuple):
+        # 仍然返回基础信息
+        return jsonify(result), 200
+
+    result['findings'] = summary_data.get('vulnerabilities', [])
+    return jsonify(result)
+
+
+@app.route('/api/scan/<int:task_id>/download', methods=['GET'])
+@jwt_required()
+def download_scan_result(task_id):
+    """下载完整 nuclei 结果 JSON"""
+    task = ScanTask.query.get_or_404(task_id)
+
+    if not task.result_file_path or task.status != 'completed':
+        return jsonify({"msg": "扫描未完成或结果文件不可用"}), 404
+
+    try:
+        return send_from_directory(
+            directory=app.config['SCAN_RESULTS_FOLDER'],
+            path=os.path.basename(task.result_file_path),
+            as_attachment=True
+        )
+    except FileNotFoundError:
+        return jsonify({"msg": "结果文件未找到。"}), 404
+
+
+# --- 查看规则内容 ---
+@app.route('/api/yaml/<int:rule_id>/content', methods=['GET'])
+@jwt_required()
+def get_rule_content(rule_id):
+    """获取规则的 YAML 内容"""
+    rule = YamlRule.query.get_or_404(rule_id)
+    
+    try:
+        with open(rule.file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return jsonify({
+            'rule': rule.to_dict(),
+            'content': content
+        })
+    except FileNotFoundError:
+        return jsonify({"msg": "规则文件未找到"}), 404
+    except Exception as e:
+        return jsonify({"msg": f"读取文件失败: {e}"}), 500
+
+
+# --- 用户管理 API ---
+@app.route('/api/admin/users', methods=['GET'])
+@role_required(['admin'])
+def get_users():
+    """获取所有用户列表"""
+    users = User.query.all()
+    return jsonify([user.to_dict() for user in users])
+
+
+@app.route('/api/admin/users/<int:user_id>/approve', methods=['POST'])
+@role_required(['admin'])
+def approve_user(user_id):
+    """审核通过用户"""
+    user = User.query.get_or_404(user_id)
+    if user.status != 'pending':
+        return jsonify({"msg": "只能审核待审核状态的用户"}), 400
+    user.status = 'approved'
+    db.session.commit()
+    return jsonify({"msg": f"用户 {user.username} 已通过审核", "user": user.to_dict()})
+
+
+@app.route('/api/admin/users/<int:user_id>/reject', methods=['POST'])
+@role_required(['admin'])
+def reject_user(user_id):
+    """拒绝用户注册"""
+    user = User.query.get_or_404(user_id)
+    if user.status != 'pending':
+        return jsonify({"msg": "只能拒绝待审核状态的用户"}), 400
+    user.status = 'rejected'
+    db.session.commit()
+    return jsonify({"msg": f"用户 {user.username} 的注册申请已被拒绝", "user": user.to_dict()})
+
+
+@app.route('/api/admin/users/<int:user_id>', methods=['DELETE'])
+@role_required(['admin'])
+def delete_user(user_id):
+    """删除用户"""
+    user = User.query.get_or_404(user_id)
+    if user.username == 'admin':
+        return jsonify({"msg": "不能删除默认管理员账户"}), 400
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"msg": f"用户 {user.username} 已删除"})
+
+
+@app.route('/api/admin/users/<int:user_id>/role', methods=['PUT'])
+@role_required(['admin'])
+def update_user_role(user_id):
+    """修改用户角色"""
+    user = User.query.get_or_404(user_id)
+    if user.username == 'admin':
+        return jsonify({"msg": "不能修改默认管理员的角色"}), 400
+    
+    data = request.get_json()
+    new_role = data.get('role')
+    if new_role not in ['admin', 'editor', 'user']:
+        return jsonify({"msg": "无效的角色"}), 400
+    
+    user.role = new_role
+    db.session.commit()
+    return jsonify({"msg": f"用户 {user.username} 的角色已更新为 {new_role}", "user": user.to_dict()})
+
+
+@app.route('/api/admin/users/<int:user_id>/password', methods=['PUT'])
+@role_required(['admin'])
+def admin_reset_password(user_id):
+    """管理员重置用户密码"""
+    user = User.query.get_or_404(user_id)
+    
+    data = request.get_json()
+    new_password = data.get('password')
+    
+    if not new_password or len(new_password) < 6:
+        return jsonify({"msg": "密码长度至少6位"}), 400
+    
+    user.set_password(new_password)
+    user.must_change_password = False  # 管理员重置后不强制修改
+    db.session.commit()
+    return jsonify({"msg": f"用户 {user.username} 的密码已重置"})
+
+
+@app.route('/api/admin/users', methods=['POST'])
+@role_required(['admin'])
+def create_user():
+    """管理员创建用户"""
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+    role = data.get('role', 'user')
+    
+    if not username or not password:
+        return jsonify({"msg": "请提供用户名和密码"}), 400
+    
+    if User.query.filter_by(username=username).first():
+        return jsonify({"msg": "用户名已存在"}), 409
+    
+    if role not in ['admin', 'editor', 'user']:
+        return jsonify({"msg": "无效的角色"}), 400
+    
+    new_user = User(username=username, role=role, status='approved')
+    new_user.set_password(password)
+    db.session.add(new_user)
+    db.session.commit()
+    
+    return jsonify({"msg": f"用户 {username} 创建成功", "user": new_user.to_dict()}), 201
+
+
+# ==================== 批量操作 API ====================
+
+@app.route('/api/yaml/export', methods=['GET'])
+@role_required(['admin', 'editor'])
+def export_rules():
+    """
+    导出规则为压缩包
+    - Admin: 可以导出所有已验证/已发布的规则
+    - Editor: 只能导出自己上传的已验证/已发布的规则
+    压缩包包含：YAML文件 + rules_meta.json（标签信息）
+    """
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(username=current_user).first()
+    
+    # 查询可导出的规则（只导出 verified 和 published 状态的）
+    query = YamlRule.query.filter(YamlRule.status.in_(['verified', 'published']))
+    
+    if user.role == 'editor':
+        # 编辑者只能导出自己的规则
+        query = query.filter(YamlRule.uploaded_by == current_user)
+    
+    rules = query.all()
+    
+    if not rules:
+        return jsonify({"msg": "没有可导出的规则"}), 404
+    
+    # 构建元数据（标签信息）
+    rules_meta = {}
+    
+    # 创建内存中的 ZIP 文件
+    memory_file = io.BytesIO()
+    with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
+        for rule in rules:
+            if os.path.exists(rule.file_path):
+                # 使用规则名称作为文件名
+                filename = f"{rule.name}.yaml"
+                zf.write(rule.file_path, filename)
+                
+                # 保存标签信息到元数据
+                tags = [tag.name for tag in rule.tags]
+                if tags:
+                    rules_meta[rule.name] = {
+                        "tags": tags,
+                        "status": rule.status
+                    }
+        
+        # 将元数据写入 JSON 文件
+        if rules_meta:
+            meta_json = json.dumps(rules_meta, ensure_ascii=False, indent=2)
+            zf.writestr('rules_meta.json', meta_json.encode('utf-8'))
+    
+    memory_file.seek(0)
+    
+    # 生成文件名
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    export_filename = f"nuclens_rules_{timestamp}.zip"
+    
+    return send_file(
+        memory_file,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=export_filename
+    )
+
+
+@app.route('/api/yaml/import', methods=['POST'])
+@role_required(['admin', 'editor'])
+def import_rules():
+    """
+    批量导入规则（ZIP 压缩包）
+    - Admin 和 Editor 可以导入
+    - 如果压缩包包含 rules_meta.json，会自动应用标签
+    """
+    if 'file' not in request.files:
+        return jsonify({"msg": "没有上传文件"}), 400
+    
+    file = request.files['file']
+    if not file.filename.endswith('.zip'):
+        return jsonify({"msg": "请上传 ZIP 格式的压缩包"}), 400
+    
+    current_user = get_jwt_identity()
+    
+    imported = []
+    skipped = []
+    errors = []
+    rules_meta = {}  # 元数据（标签信息）
+    
+    try:
+        # 读取 ZIP 文件
+        with zipfile.ZipFile(file, 'r') as zf:
+            # 先检查是否有元数据文件
+            if 'rules_meta.json' in zf.namelist():
+                try:
+                    meta_content = zf.read('rules_meta.json').decode('utf-8')
+                    rules_meta = json.loads(meta_content)
+                except Exception as e:
+                    # 元数据解析失败不影响导入，只是没有标签
+                    pass
+            
+            for name in zf.namelist():
+                if not name.endswith(('.yaml', '.yml')):
+                    continue
+                
+                try:
+                    content = zf.read(name).decode('utf-8')
+                    yaml_content = yaml.safe_load(content)
+                    
+                    if not isinstance(yaml_content, dict):
+                        errors.append(f"{name}: 无效的 YAML 格式")
+                        continue
+                    
+                    rule_id = yaml_content.get('id')
+                    if not rule_id:
+                        errors.append(f"{name}: 缺少 'id' 字段")
+                        continue
+                    
+                    # 检查是否已存在
+                    if YamlRule.query.filter_by(name=rule_id).first():
+                        skipped.append(f"{name}: 规则 '{rule_id}' 已存在")
+                        continue
+                    
+                    # 保存文件
+                    filename = f"{rule_id}.yaml"
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    
+                    if os.path.exists(filepath):
+                        skipped.append(f"{name}: 文件 '{filename}' 已存在")
+                        continue
+                    
+                    with open(filepath, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    
+                    # 创建数据库记录
+                    new_rule = YamlRule(
+                        name=rule_id,
+                        file_path=filepath,
+                        uploaded_by=current_user,
+                        status='pending'
+                    )
+                    db.session.add(new_rule)
+                    db.session.flush()  # 获取 ID 以便添加标签
+                    
+                    # 应用标签（如果元数据中有）
+                    if rule_id in rules_meta and 'tags' in rules_meta[rule_id]:
+                        for tag_name in rules_meta[rule_id]['tags']:
+                            tag = Tag.query.filter_by(name=tag_name).first()
+                            if not tag:
+                                tag = Tag(name=tag_name)
+                                db.session.add(tag)
+                                db.session.flush()
+                            if tag not in new_rule.tags:
+                                new_rule.tags.append(tag)
+                    
+                    imported.append(rule_id)
+                    
+                except Exception as e:
+                    errors.append(f"{name}: {str(e)}")
+        
+        db.session.commit()
+        
+    except zipfile.BadZipFile:
+        return jsonify({"msg": "无效的 ZIP 文件"}), 400
+    
+    return jsonify({
+        "msg": f"导入完成：成功 {len(imported)} 个，跳过 {len(skipped)} 个，失败 {len(errors)} 个",
+        "imported": imported,
+        "skipped": skipped,
+        "errors": errors
+    })
+
+
+@app.route('/api/yaml/batch/validate', methods=['POST'])
+@role_required(['admin', 'editor'])
+def batch_validate_rules():
+    """
+    批量验证规则（使用 nuclei -validate）
+    - Admin: 可以验证所有规则
+    - Editor: 只能验证自己上传的规则
+    """
+    data = request.get_json()
+    rule_ids = data.get('rule_ids', [])
+    
+    if not rule_ids:
+        return jsonify({"msg": "请提供要验证的规则 ID 列表"}), 400
+    
+    current_user = get_jwt_identity()
+    user = User.query.filter_by(username=current_user).first()
+    
+    success = []
+    failed = []
+    
+    for rule_id in rule_ids:
+        rule = YamlRule.query.get(rule_id)
+        if not rule:
+            failed.append({"id": rule_id, "reason": "规则不存在"})
+            continue
+        
+        # 检查权限
+        if user.role != 'admin' and rule.uploaded_by != current_user:
+            failed.append({"id": rule_id, "reason": "无权限验证此规则"})
+            continue
+        
+        # 只能验证 pending 或 failed 状态的规则
+        if rule.status not in ['pending', 'failed']:
+            failed.append({"id": rule_id, "reason": f"状态为 {rule.status}，无法验证"})
+            continue
+        
+        # 验证规则文件是否存在
+        if not os.path.exists(rule.file_path):
+            rule.status = 'failed'
+            failed.append({"id": rule_id, "reason": "规则文件不存在"})
+            continue
+        
+        # 使用 nuclei 进行验证
+        nuclei_path = get_nuclei_path()
+        command = [nuclei_path, '-t', rule.file_path, '-validate']
+        try:
+            result = subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
+            rule.status = 'verified'
+            success.append(rule_id)
+        except FileNotFoundError:
+            failed.append({"id": rule_id, "reason": "nuclei 命令未找到"})
+        except subprocess.CalledProcessError as e:
+            rule.status = 'failed'
+            failed.append({"id": rule_id, "reason": e.stderr.strip() if e.stderr else "验证失败"})
+        except Exception as e:
+            rule.status = 'failed'
+            failed.append({"id": rule_id, "reason": str(e)})
+    
+    db.session.commit()
+    
+    return jsonify({
+        "msg": f"批量验证完成：成功 {len(success)} 个，失败 {len(failed)} 个",
+        "success": success,
+        "failed": failed
+    })
+
+
+@app.route('/api/yaml/batch/publish', methods=['POST'])
+@role_required(['admin'])
+def batch_publish_rules():
+    """
+    批量发布规则（仅管理员）
+    只能发布 verified 状态的规则
+    """
+    data = request.get_json()
+    rule_ids = data.get('rule_ids', [])
+    
+    if not rule_ids:
+        return jsonify({"msg": "请提供要发布的规则 ID 列表"}), 400
+    
+    success = []
+    failed = []
+    
+    for rule_id in rule_ids:
+        rule = YamlRule.query.get(rule_id)
+        if not rule:
+            failed.append({"id": rule_id, "reason": "规则不存在"})
+            continue
+        
+        if rule.status != 'verified':
+            failed.append({"id": rule_id, "reason": f"状态为 {rule.status}，只能发布 verified 状态的规则"})
+            continue
+        
+        rule.status = 'published'
+        success.append(rule_id)
+    
+    db.session.commit()
+    
+    return jsonify({
+        "msg": f"批量发布完成：成功 {len(success)} 个，失败 {len(failed)} 个",
+        "success": success,
+        "failed": failed
+    })
+
+
+@app.route('/api/yaml/batch/delete', methods=['POST'])
+@role_required(['admin'])
+def batch_delete_rules():
+    """
+    批量删除规则（仅管理员）
+    """
+    data = request.get_json()
+    rule_ids = data.get('rule_ids', [])
+    
+    if not rule_ids:
+        return jsonify({"msg": "请提供要删除的规则 ID 列表"}), 400
+    
+    success = []
+    failed = []
+    
+    for rule_id in rule_ids:
+        rule = YamlRule.query.get(rule_id)
+        if not rule:
+            failed.append({"id": rule_id, "reason": "规则不存在"})
+            continue
+        
+        try:
+            # 删除文件
+            if os.path.exists(rule.file_path):
+                os.remove(rule.file_path)
+            
+            # 删除数据库记录
+            db.session.delete(rule)
+            success.append(rule_id)
+        except Exception as e:
+            failed.append({"id": rule_id, "reason": str(e)})
+    
+    db.session.commit()
+    
+    return jsonify({
+        "msg": f"批量删除完成：成功 {len(success)} 个，失败 {len(failed)} 个",
+        "success": success,
+        "failed": failed
+    })
+
+
+# --- System Settings Endpoints ---
+@app.route('/api/settings', methods=['GET'])
+@role_required(['admin'])
+def get_settings():
+    """获取系统设置（仅管理员）"""
+    nuclei_path = SystemSettings.get('nuclei_path', DEFAULT_NUCLEI_PATH)
+    nuclei_platform = SystemSettings.get('nuclei_platform', 'windows')
+    
+    # 检查 nuclei 是否存在
+    nuclei_exists = os.path.isfile(nuclei_path) if nuclei_path else False
+    
+    return jsonify({
+        "nuclei_path": nuclei_path,
+        "nuclei_platform": nuclei_platform,
+        "nuclei_exists": nuclei_exists,
+        "default_nuclei_path": DEFAULT_NUCLEI_PATH
+    })
+
+@app.route('/api/settings/nuclei', methods=['POST'])
+@role_required(['admin'])
+def upload_nuclei():
+    """上传 nuclei 二进制文件（仅管理员）"""
+    if 'file' not in request.files:
+        return jsonify({"msg": "没有选择文件"}), 400
+    
+    file = request.files['file']
+    platform = request.form.get('platform', 'windows')
+    
+    if file.filename == '':
+        return jsonify({"msg": "没有选择文件"}), 400
+    
+    # 确定文件名
+    if platform == 'windows':
+        filename = 'nuclei.exe'
+    else:
+        filename = 'nuclei'
+    
+    # 确保目录存在
+    if not os.path.exists(NUCLEI_BIN_FOLDER):
+        os.makedirs(NUCLEI_BIN_FOLDER)
+    
+    # 保存文件
+    filepath = os.path.join(NUCLEI_BIN_FOLDER, filename)
+    file.save(filepath)
+    
+    # 在 Linux 上设置可执行权限
+    if platform != 'windows':
+        try:
+            import stat
+            os.chmod(filepath, os.stat(filepath).st_mode | stat.S_IEXEC)
+        except:
+            pass
+    
+    # 更新设置
+    SystemSettings.set('nuclei_path', filepath)
+    SystemSettings.set('nuclei_platform', platform)
+    
+    return jsonify({
+        "msg": f"Nuclei 二进制文件已上传成功",
+        "nuclei_path": filepath,
+        "nuclei_platform": platform
+    })
+
+import re
+
+def strip_ansi_codes(text):
+    """清理 ANSI 颜色代码"""
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    return ansi_escape.sub('', text)
+
+@app.route('/api/settings/nuclei/test', methods=['POST'])
+@role_required(['admin'])
+def test_nuclei():
+    """测试 nuclei 是否可用（仅管理员）"""
+    nuclei_path = get_nuclei_path()
+    
+    if not os.path.isfile(nuclei_path):
+        return jsonify({"msg": "Nuclei 文件不存在", "success": False}), 400
+    
+    try:
+        result = subprocess.run(
+            [nuclei_path, '-version'],
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            timeout=30
+        )
+        version_output = result.stdout.strip() or result.stderr.strip()
+        # 清理 ANSI 颜色代码
+        version_output = strip_ansi_codes(version_output)
+        # 只提取版本号行
+        lines = version_output.split('\n')
+        version_line = next((l for l in lines if 'Version' in l), version_output.split('\n')[0] if version_output else '')
+        return jsonify({
+            "msg": "Nuclei 测试成功",
+            "success": True,
+            "version": version_line.strip()
+        })
+    except FileNotFoundError:
+        return jsonify({"msg": "Nuclei 命令无法执行", "success": False}), 400
+    except subprocess.TimeoutExpired:
+        return jsonify({"msg": "Nuclei 执行超时", "success": False}), 400
+    except Exception as e:
+        return jsonify({"msg": f"测试失败: {str(e)}", "success": False}), 400
+
+@app.route('/api/settings/nuclei', methods=['DELETE'])
+@role_required(['admin'])
+def reset_nuclei_settings():
+    """重置 nuclei 设置为默认值（仅管理员）"""
+    # 删除设置，回退到默认值
+    setting = SystemSettings.query.filter_by(key='nuclei_path').first()
+    if setting:
+        db.session.delete(setting)
+    setting = SystemSettings.query.filter_by(key='nuclei_platform').first()
+    if setting:
+        db.session.delete(setting)
+    db.session.commit()
+    
+    return jsonify({
+        "msg": "Nuclei 设置已重置为默认值",
+        "nuclei_path": DEFAULT_NUCLEI_PATH
+    })
+
+
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+        # 创建默认管理员账户
+        if not User.query.filter_by(username='admin').first():
+            admin = User(
+                username='admin',
+                role='admin',
+                status='approved',
+                must_change_password=True
+            )
+            admin.set_password('admin')
+            db.session.add(admin)
+            db.session.commit()
+            print("默认管理员账户已创建: admin / admin")
+    app.run(debug=True, port=5001)

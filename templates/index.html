@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NUCLENS - 漏洞扫描框架</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <header>
+        <h1>NUCLENS</h1>
+        <nav id="main-nav" style="display: none;">
+            <div class="nav-links">
+                <a href="#" id="nav-dashboard">仪表盘</a>
+                <a href="#" id="nav-rules">规则管理</a>
+                <a href="#" id="nav-upload">上传规则</a>
+                <a href="#" id="nav-scans">扫描任务</a>
+                <a href="#" id="nav-users" style="display: none;">用户管理</a>
+                <a href="#" id="nav-settings" style="display: none;">系统设置</a>
+            </div>
+            <div class="user-menu">
+                <button class="user-menu-btn" id="user-menu-btn">
+                    <div class="user-avatar">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                        </svg>
+                    </div>
+                    <span id="username-nav"></span>
+                    <span class="dropdown-arrow">▼</span>
+                </button>
+                <div class="user-dropdown" id="user-dropdown">
+                    <a href="#" id="profile-btn">个人设置</a>
+                    <a href="#" id="logout-btn">登出</a>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <!-- 登录/注册视图 -->
+        <section id="auth-view">
+            <div class="auth-container">
+                <div class="form-container" id="login-form">
+                    <h2>登录</h2>
+                    <div id="login-message" class="form-message"></div>
+                    <div class="form-group">
+                        <input type="text" id="login-username" placeholder="用户名" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="login-password" placeholder="密码" required>
+                    </div>
+                    <button id="login-btn" class="btn-primary btn-block">登录</button>
+                    <p class="form-footer">还没有账户？ <a href="#" id="show-register">申请注册</a></p>
+                </div>
+                <div class="form-container" id="register-form" style="display: none;">
+                    <h2>申请注册</h2>
+                    <p class="form-hint">注册申请需要管理员审核通过后才能登录</p>
+                    <div id="register-message" class="form-message"></div>
+                    <div class="form-group">
+                        <input type="text" id="register-username" placeholder="用户名" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="register-password" placeholder="密码（至少6位）" required>
+                    </div>
+                    <div class="form-group">
+                        <select id="register-role">
+                            <option value="user">用户</option>
+                            <option value="editor">编辑</option>
+                        </select>
+                    </div>
+                    <button id="register-btn" class="btn-primary btn-block">提交申请</button>
+                    <p class="form-footer">已有账户？ <a href="#" id="show-login">返回登录</a></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 修改密码视图 -->
+        <section id="change-password-view" style="display: none;">
+            <div class="auth-container">
+                <div class="form-container">
+                    <h2>修改密码</h2>
+                    <p class="form-hint">首次登录需要修改默认密码</p>
+                    <div id="change-password-message" class="form-message"></div>
+                    <div class="form-group">
+                        <input type="password" id="old-password" placeholder="当前密码" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="new-password" placeholder="新密码（至少6位）" required>
+                    </div>
+                    <div class="form-group">
+                        <input type="password" id="confirm-password" placeholder="确认新密码" required>
+                    </div>
+                    <button id="change-password-btn" class="btn-primary btn-block">修改密码</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 仪表盘视图 -->
+        <section id="dashboard-view" style="display: none;">
+            <div class="page-header">
+                <h2>仪表盘</h2>
+            </div>
+            <div class="dashboard-welcome">
+                <div class="welcome-card">
+                    <h3>欢迎回来，<span id="username-display"></span>！</h3>
+                    <p>使用 NUCLENS 管理您的漏洞扫描规则和任务。</p>
+                </div>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-rules">-</div>
+                        <div class="stat-label">规则总数</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-published">-</div>
+                        <div class="stat-label">已发布</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="stat-scans">-</div>
+                        <div class="stat-label">扫描任务</div>
+                    </div>
+                    <div class="stat-card" id="stat-pending-users-card" style="display: none;">
+                        <div class="stat-number" id="stat-pending-users">-</div>
+                        <div class="stat-label">待审核用户</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 规则管理视图 -->
+        <section id="rules-view" style="display: none;">
+            <div class="page-header">
+                <h2>规则管理</h2>
+                <div class="header-actions">
+                    <button id="import-rules-btn" class="btn btn-import">导入规则</button>
+                    <button id="export-rules-btn" class="btn btn-export">导出规则</button>
+                    <button id="goto-upload-btn" class="btn-primary">+ 上传新规则</button>
+                </div>
+            </div>
+            
+            <!-- 批量操作工具栏 -->
+            <div class="batch-toolbar">
+                <div class="toolbar-left">
+                    <span id="selected-count" class="selected-count">已选择 <strong>0</strong> 项</span>
+                    <button id="batch-validate-btn" class="btn btn-secondary btn-small">批量验证</button>
+                    <button id="batch-publish-btn" class="btn btn-primary btn-small">批量发布</button>
+                    <button id="batch-delete-btn" class="btn btn-danger btn-small">批量删除</button>
+                </div>
+                <div class="toolbar-right">
+                    <input type="text" id="filter-tags-input" placeholder="搜索名称或标签..." class="filter-input">
+                    <button id="filter-rules-btn" class="btn btn-secondary btn-small">筛选</button>
+                    <button id="clear-filter-btn" class="btn btn-text btn-small">清除</button>
+                </div>
+            </div>
+            
+            <div class="table-container">
+                <table id="rules-table">
+                    <thead>
+                        <tr>
+                            <th class="checkbox-header" style="width: 40px;"><input type="checkbox" id="select-all-rules" title="全选"></th>
+                            <th style="min-width: 200px; max-width: 300px;">规则名称</th>
+                            <th style="width: 25%;">标签</th>
+                            <th>上传者</th>
+                            <th>上传时间</th>
+                            <th class="status-header">
+                                <select id="filter-status-select" class="status-filter-select">
+                                    <option value="">状态</option>
+                                    <option value="pending">pending</option>
+                                    <option value="verified">verified</option>
+                                    <option value="published">published</option>
+                                    <option value="failed">failed</option>
+                                </select>
+                            </th>
+                            <th style="width: 220px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            
+            <!-- 隐藏的导入文件输入框 -->
+            <input type="file" id="import-zip-input" accept=".zip" hidden>
+        </section>
+
+        <!-- 上传规则视图 -->
+        <section id="upload-view" style="display: none;">
+            <div class="page-header">
+                <h2>上传规则</h2>
+            </div>
+            <div class="upload-container">
+                <div class="upload-tabs">
+                    <button class="tab-btn active" data-tab="file">上传文件</button>
+                    <button class="tab-btn" data-tab="text">文本输入</button>
+                </div>
+                
+                <div class="tab-content active" id="tab-file">
+                    <div class="upload-zone" id="drop-zone">
+                        <div class="upload-icon">📄</div>
+                        <p>拖拽 YAML 文件到此处，或点击选择文件</p>
+                        <input type="file" id="yaml-upload-input" accept=".yaml,.yml" hidden>
+                        <button id="select-file-btn" class="btn-secondary">选择文件</button>
+                        <p class="file-name" id="selected-file-name"></p>
+                    </div>
+                    <button id="upload-rule-btn" class="btn-primary btn-block" disabled>上传规则</button>
+                </div>
+                
+                <div class="tab-content" id="tab-text" style="display: none;">
+                    <div class="form-group">
+                        <label for="yaml-text-input">输入 YAML 规则内容：</label>
+                        <textarea id="yaml-text-input" rows="12" placeholder="id: my-rule&#10;info:&#10;  name: My Custom Rule&#10;  severity: low&#10;  description: ..."></textarea>
+                    </div>
+                    <button id="submit-yaml-text-btn" class="btn-primary btn-block">提交规则</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 扫描任务视图 -->
+        <section id="scans-view" style="display: none;">
+            <div class="page-header">
+                <h2>扫描任务</h2>
+            </div>
+            
+            <div class="scan-form-card">
+                <h3>发起新扫描</h3>
+                <div class="scan-form">
+                    <div class="form-row">
+                        <div class="form-group flex-2">
+                            <label for="scan-target-url">目标 URL</label>
+                            <input type="text" id="scan-target-url" placeholder="https://example.com">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>选择扫描标签</label>
+                        <div class="tag-input-wrapper">
+                            <div class="selected-tags" id="selected-scan-tags"></div>
+                            <input type="text" id="scan-tags-input" placeholder="输入标签名称...">
+                        </div>
+                        <datalist id="published-tags"></datalist>
+                        <div class="available-tags" id="available-tags-list">
+                            <span class="hint-text">可用标签将在此显示</span>
+                        </div>
+                    </div>
+                    <button id="submit-scan-btn" class="btn-primary">开始扫描</button>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <h3>历史任务</h3>
+            </div>
+            
+            <div class="table-container">
+                <table id="scans-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>目标 URL</th>
+                            <th>标签</th>
+                            <th>状态</th>
+                            <th>发起人</th>
+                            <th>创建时间</th>
+                            <th>命中数</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 用户管理视图 -->
+        <section id="users-view" style="display: none;">
+            <div class="page-header">
+                <h2>用户管理</h2>
+                <button id="add-user-btn" class="btn-primary">+ 添加用户</button>
+            </div>
+            
+            <div class="filter-bar">
+                <div class="filter-group">
+                    <select id="filter-user-status">
+                        <option value="">全部状态</option>
+                        <option value="pending">待审核</option>
+                        <option value="approved">已通过</option>
+                        <option value="rejected">已拒绝</option>
+                    </select>
+                    <button id="filter-users-btn" class="btn-secondary">筛选</button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table id="users-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>用户名</th>
+                            <th>角色</th>
+                            <th>状态</th>
+                            <th>创建时间</th>
+                            <th style="width: 200px;">操作</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 系统设置视图 -->
+        <section id="settings-view" style="display: none;">
+            <div class="page-header">
+                <h2>系统设置</h2>
+            </div>
+            
+            <div class="settings-container">
+                <div class="settings-section">
+                    <h3>Nuclei 配置</h3>
+                    <p class="settings-description">
+                        配置 Nuclei 扫描引擎。您可以上传适合当前操作系统的 Nuclei 二进制文件。
+                    </p>
+                    
+                    <div class="settings-info">
+                        <div class="info-row">
+                            <label>当前 Nuclei 路径：</label>
+                            <span id="current-nuclei-path">-</span>
+                        </div>
+                        <div class="info-row">
+                            <label>当前平台：</label>
+                            <span id="current-nuclei-platform">-</span>
+                        </div>
+                        <div class="info-row">
+                            <label>状态：</label>
+                            <span id="nuclei-status" class="status-badge">-</span>
+                        </div>
+                        <div class="info-row">
+                            <label>版本信息：</label>
+                            <span id="nuclei-version">-</span>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-actions">
+                        <button id="test-nuclei-btn" class="btn-secondary">测试 Nuclei</button>
+                        <button id="reset-nuclei-btn" class="btn-secondary">重置为默认</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>上传 Nuclei 二进制文件</h3>
+                    <p class="settings-description">
+                        选择您的操作系统并上传对应的 Nuclei 可执行文件。
+                        <br>Windows: nuclei.exe | Linux/Mac: nuclei
+                    </p>
+                    
+                    <div class="upload-nuclei-form">
+                        <div class="form-group">
+                            <label>操作系统</label>
+                            <select id="nuclei-platform-select">
+                                <option value="windows">Windows</option>
+                                <option value="linux">Linux</option>
+                                <option value="darwin">macOS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>选择文件</label>
+                            <input type="file" id="nuclei-file-input">
+                        </div>
+                        <button id="upload-nuclei-btn" class="btn-primary">上传并配置</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 通用模态框 -->
+    <div id="modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">标题</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body" id="modal-body"></div>
+        </div>
+    </div>
+
+    <!-- 添加用户模态框 -->
+    <div id="add-user-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>添加用户</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="new-user-username" placeholder="用户名">
+                </div>
+                <div class="form-group">
+                    <label>密码</label>
+                    <input type="password" id="new-user-password" placeholder="密码">
+                </div>
+                <div class="form-group">
+                    <label>角色</label>
+                    <select id="new-user-role">
+                        <option value="user">用户</option>
+                        <option value="editor">编辑</option>
+                        <option value="admin">管理员</option>
+                    </select>
+                </div>
+                <button id="confirm-add-user-btn" class="btn-primary btn-block">创建用户</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑用户模态框 -->
+    <div id="edit-user-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>编辑用户</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-user-id">
+                <div class="form-group">
+                    <label>用户名</label>
+                    <input type="text" id="edit-user-username" disabled>
+                </div>
+                <div class="form-group">
+                    <label>新密码（留空则不修改）</label>
+                    <input type="password" id="edit-user-password" placeholder="输入新密码">
+                </div>
+                <button id="confirm-edit-user-btn" class="btn-primary btn-block">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 个人设置模态框 -->
+    <div id="profile-modal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 450px;">
+            <div class="modal-header">
+                <h3>个人设置</h3>
+                <span class="modal-close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="profile-info">
+                    <div class="info-row">
+                        <label>用户名：</label>
+                        <span id="profile-username">-</span>
+                    </div>
+                    <div class="info-row">
+                        <label>角色：</label>
+                        <span id="profile-role">-</span>
+                    </div>
+                    <div class="info-row">
+                        <label>创建时间：</label>
+                        <span id="profile-created">-</span>
+                    </div>
+                </div>
+                
+                <hr style="margin: 20px 0; border: none; border-top: 1px solid rgba(255,255,255,0.1);">
+                
+                <h4 style="margin-bottom: 15px; color: var(--text-primary);">修改密码</h4>
+                <div class="form-group">
+                    <label>当前密码</label>
+                    <input type="password" id="profile-current-password" placeholder="请输入当前密码">
+                </div>
+                <div class="form-group">
+                    <label>新密码</label>
+                    <input type="password" id="profile-new-password" placeholder="请输入新密码（至少6位）">
+                </div>
+                <div class="form-group">
+                    <label>确认新密码</label>
+                    <input type="password" id="profile-confirm-password" placeholder="请再次输入新密码">
+                </div>
+                <button id="save-profile-btn" class="btn-primary btn-block">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 复制成功提示 -->
+    <div id="copy-toast" class="copy-toast">复制成功</div>
+    
+    <!-- 通用 Toast 通知 -->
+    <div id="toast-notification" class="toast-notification"></div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

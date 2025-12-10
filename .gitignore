@@ -1,0 +1,49 @@
+# 数据库文件
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# Nuclei 二进制文件 (用户需自行下载)
+bin/nuclei
+bin/nuclei.exe
+
+# 规则文件 (可选，取消注释以忽略)
+# nuclei_rules/*.yaml
+# nuclei_rules/*.yml
+
+# 扫描结果
+scan_results/*.json
+
+# 环境变量文件
+.env
+.env.local
+.env.*.local
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+tmp/
+temp/
+*.tmp
