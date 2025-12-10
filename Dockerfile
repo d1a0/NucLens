@@ -17,9 +17,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 下载并安装 Nuclei (Linux 版本)
+# 下载并安装 Nuclei (Linux 版本，使用 gh-proxy 加速)
 ARG NUCLEI_VERSION=3.3.7
-RUN wget -q https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip \
+RUN wget -q https://gh-proxy.org/https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip \
     && unzip nuclei_${NUCLEI_VERSION}_linux_amd64.zip -d /usr/local/bin/ \
     && rm nuclei_${NUCLEI_VERSION}_linux_amd64.zip \
     && chmod +x /usr/local/bin/nuclei
