@@ -6,6 +6,7 @@ import json
 import zipfile
 import io
 import tempfile
+import secrets
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory, render_template, send_file
 from flask_sqlalchemy import SQLAlchemy
@@ -24,7 +25,8 @@ NUCLEI_BIN_FOLDER = os.path.join(basedir, 'bin')
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['JWT_SECRET_KEY'] = 'your-super-secret-key-change-me'  # 请务必在生产环境中修改此密钥
+# JWT密钥：优先使用环境变量，否则自动生成随机密钥
+app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY') or secrets.token_hex(32)
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'nuclei_rules')
 app.config['SCAN_RESULTS_FOLDER'] = os.path.join(basedir, 'scan_results')
 
