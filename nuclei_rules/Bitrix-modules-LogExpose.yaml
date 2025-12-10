@@ -1,0 +1,33 @@
+id: Bitrix-modules-LogExpose
+
+info:
+  name: Bitrix-modules-LogExpose
+  author: iSee857
+  severity: medium
+  description: |
+    Bitrix-modules-LogExpose.
+
+http:
+  - method: GET
+    path:
+      - "{{BaseURL}}/bitrix/modules/updater.log"
+      - "{{BaseURL}}/bitrix/modules/updater_partner.log"
+
+    stop-at-first-match: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+          
+      - type: word
+        words:
+          - "LICENSE_KEY"
+          - "CUpdateClient"
+          - "UPD_SUCCESS"
+          - "UPD_ERROR"
+          - "SUPD_VER"
+          - "bitm_"
+        condition: or
+
+

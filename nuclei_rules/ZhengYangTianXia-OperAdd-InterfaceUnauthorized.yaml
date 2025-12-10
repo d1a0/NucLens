@@ -1,0 +1,29 @@
+id: ZhengYangTianXia-OperAdd-InterfaceUnauthorized
+
+info:
+  name: ZhengYangTianXia-OperAdd-InterfaceUnauthorized
+  author: iSee857
+  severity: high
+  description: |
+    ZhengYangTianXia-OperAdd-InterfaceUnauthorized
+  tags: InterfaceUnauthorized
+
+http:
+  - raw:
+      - |
+        GET /Auth/OperAdd.aspx HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "__VIEWSTATE"
+          - "txtcmpwd"
+          - "txtpwd"
+        condition: and
+
+      - type: status
+        status:
+          - 200

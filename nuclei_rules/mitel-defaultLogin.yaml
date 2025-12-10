@@ -1,0 +1,26 @@
+id: mitel-defaultLogin
+
+info:
+  name: mitel-defaultLogin
+  author: iSee857
+  severity: high
+  description: |
+    mitel-defaultLogin
+
+http:
+  - raw:
+      - |
+        GET /sysinfo.html HTTP/1.1
+        Host: {{Hostname}}
+        Authorization: Basic YWRtaW46MjIyMjI=
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "System Information"
+          - "logout.html"
+        condition: and

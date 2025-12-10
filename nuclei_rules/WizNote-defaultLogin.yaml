@@ -1,0 +1,28 @@
+id: WizNote-defaultLogin
+
+info:
+  name: WizNote-defaultLogin
+  author: iSee857
+  severity: high
+  description: |
+    WizNote-defaultLogin
+
+http:
+  - raw:
+      - |
+        POST /as/user/login?clientType=web&clientVersion=4.0&lang=zh-cn HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+
+        {"userId":"admin@wiz.cn","password":"123456","autoLogin":true,"domain":"","deviceId":null}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: body
+        words:
+          - '"returnMessage":"OK'
+          - 'returnCode":200'

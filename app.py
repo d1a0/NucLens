@@ -572,6 +572,8 @@ def list_yaml_rules():
     - User: sees only 'verified' rules.
     """
     tags_filter = request.args.get('tags')
+    status_filter = request.args.get('status')  # 新增状态筛选
+    search_filter = request.args.get('search')  # 新增搜索筛选
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     
@@ -600,6 +602,20 @@ def list_yaml_rules():
     else:  # 'user'
         # 普通用户只能看到已公开的规则
         query = query.filter(YamlRule.status == 'published')
+
+    # 状态筛选
+    if status_filter:
+        query = query.filter(YamlRule.status == status_filter)
+    
+    # 搜索筛选（名称或标签）
+    if search_filter:
+        search_term = f'%{search_filter}%'
+        query = query.outerjoin(YamlRule.tags).filter(
+            db.or_(
+                YamlRule.name.ilike(search_term),
+                Tag.name.ilike(search_term)
+            )
+        ).distinct()
 
     if tags_filter:
         tag_names = tags_filter.split(',')

