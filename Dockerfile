@@ -11,10 +11,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
     DEBIAN_FRONTEND=noninteractive
 
-# 锁定 Debian 版本并显式安装依赖
+# 锁定 Debian 版本并强制安装正确的依赖包
 RUN echo "deb https://mirrors.aliyun.com/debian bullseye main" > /etc/apt/sources.list && \
     echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main" >> /etc/apt/sources.list && \
     rm -rf /etc/apt/sources.list.d/* && \
+    echo "Package: *\nPin: release a=bullseye\nPin-Priority: 1001" > /etc/apt/preferences.d/bullseye && \
     apt-get update --allow-releaseinfo-change && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \
@@ -23,7 +24,8 @@ RUN echo "deb https://mirrors.aliyun.com/debian bullseye main" > /etc/apt/source
     gnupg \
     lsb-release \
     perl-base=5.32.1-4+deb11u4 \
-    libncurses6=6.2+20201114-2+deb11u2 && \
+    libncurses6=6.2+20201114-2+deb11u2 \
+    libtinfo6=6.2+20201114-2+deb11u2 && \
     echo "安装 MySQL" && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     default-mysql-server \
