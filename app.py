@@ -1225,7 +1225,7 @@ def import_rules():
     - Admin 和 Editor 可以导入
     - 如果压缩包包含 rules_meta.json，会自动应用标签
     - 只导入状态为 published 的规则，导入后需要重新验证
-    - 已存在的规则不会覆盖，记为失败
+    - 已存在的规则不会覆盖，跳过
     """
     if 'file' not in request.files:
         return jsonify({"msg": "没有上传文件"}), 400
@@ -1240,6 +1240,7 @@ def import_rules():
     skipped = []
     errors = []
     rules_meta = {}  # 元数据（标签信息）
+    processed_rule_ids = set()  # 跟踪本次导入已处理的规则ID，避免ZIP包内重复
     
     try:
         # 读取 ZIP 文件
@@ -1270,17 +1271,27 @@ def import_rules():
                         errors.append(f"{name}: 缺少 'id' 字段")
                         continue
                     
+                    # 检查ZIP包内是否有重复（本次导入已处理过）
+                    if rule_id in processed_rule_ids:
+                        skipped.append(f"{name}: 规则 '{rule_id}' 在压缩包内重复，跳过")
+                        continue
+                    
                     # 检查元数据中的状态，只导入 published 状态的规则
                     meta_status = rules_meta.get(rule_id, {}).get('status', '')
                     if rules_meta and meta_status != 'published':
                         skipped.append(f"{name}: 规则 '{rule_id}' 状态不是 published，跳过")
+                        processed_rule_ids.add(rule_id)
                         continue
                     
-                    # 检查是否已存在 - 已存在则跳过，不覆盖
+                    # 检查数据库中是否已存在
                     existing_rule = YamlRule.query.filter_by(name=rule_id).first()
                     if existing_rule:
                         skipped.append(f"{name}: 规则 '{rule_id}' 已存在，跳过")
+                        processed_rule_ids.add(rule_id)
                         continue
+                    
+                    # 标记为已处理
+                    processed_rule_ids.add(rule_id)
                     
                     # 保存文件
                     filename = f"{rule_id}.yaml"
