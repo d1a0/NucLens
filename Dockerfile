@@ -11,11 +11,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
     DEBIAN_FRONTEND=noninteractive
 
-# 锁定 Debian 版本并调整优先级以避免依赖冲突
-RUN echo "deb https://mirrors.aliyun.com/debian bullseye main" > /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main" >> /etc/apt/sources.list && \
+# 锁定 Debian 版本为 bookworm 并安装 mariadb
+RUN echo "deb https://mirrors.aliyun.com/debian bookworm main" > /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian-security bookworm-security main" >> /etc/apt/sources.list && \
     rm -rf /etc/apt/sources.list.d/* && \
-    echo "Package: *\nPin: release a=bullseye\nPin-Priority: 500" > /etc/apt/preferences.d/bullseye && \
     apt-get update --allow-releaseinfo-change && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \
@@ -23,10 +22,10 @@ RUN echo "deb https://mirrors.aliyun.com/debian bullseye main" > /etc/apt/source
     ca-certificates \
     gnupg \
     lsb-release && \
-    echo "安装 MySQL" && \
+    echo "安装 MariaDB" && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    default-mysql-server \
-    default-mysql-client && \
+    mariadb-server \
+    mariadb-client && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
     echo "验证国内源是否生效：" && grep -E "mirrors.aliyun.com" /etc/apt/sources.list
 
