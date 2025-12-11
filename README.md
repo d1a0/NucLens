@@ -145,6 +145,16 @@ NucLens/
 
 ## 🔄 版本更新
 
+### 更新前准备
+
+1. **停止服务**：
+   - Docker Compose：`docker-compose down`
+   - Docker：`docker stop nuclens && docker rm nuclens`
+   - 本地部署：手动停止运行的 Python 服务。
+2. **备份数据**：
+   - 备份 MySQL 数据库：`docker exec nuclens_mysql /usr/bin/mysqldump -u root --password=yourpassword nuclens > backup.sql`
+   - 备份配置文件和规则：复制 `config.py` 和 `nuclei_rules/` 目录。
+
 ### Docker Compose 更新（推荐）
 
 ```bash
