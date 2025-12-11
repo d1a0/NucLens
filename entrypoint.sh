@@ -38,7 +38,7 @@ echo "MySQL 启动成功!"
 
 # 配置 MySQL 用户和数据库
 echo "[4/4] 配置数据库..."
-mysql -u root <<-EOSQL
+mysql -u root -p"${MYSQL_PASSWORD}" <<-EOSQL
     -- 创建数据库（如果不存在）
     CREATE DATABASE IF NOT EXISTS \`${MYSQL_DATABASE}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
     
