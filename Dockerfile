@@ -14,12 +14,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # 强制覆盖 /etc/apt/sources.list 并验证国内源
 RUN echo "deb https://mirrors.aliyun.com/debian bullseye main" > /etc/apt/sources.list && \
     echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main" >> /etc/apt/sources.list && \
-    apt-get update && apt-get install -y --no-install-recommends \
+    apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \
     unzip \
     ca-certificates \
     gnupg \
-    lsb-release \
+    lsb-release && \
+    echo "安装 MySQL" && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     default-mysql-server \
     default-mysql-client && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
