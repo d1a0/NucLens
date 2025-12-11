@@ -5,7 +5,7 @@ NucLens 配置文件
 """
 
 # ============ 版本信息 ============
-VERSION = '2.0.5'
+VERSION = '2.0.6'
 
 # ============ 数据库配置 ============
 # MySQL 连接配置
@@ -25,3 +25,11 @@ JWT_SECRET_KEY = ''
 APP_PORT = 5001
 # 调试模式（生产环境请设为 False）
 DEBUG_MODE = False
+
+# ============ HTTPS 配置 ============
+# 是否启用 HTTPS
+HTTPS_ENABLED = False
+# SSL 证书路径（相对于项目根目录或绝对路径）
+SSL_CERT_PATH = 'certs/cert.pem'
+# SSL 私钥路径
+SSL_KEY_PATH = 'certs/key.pem'

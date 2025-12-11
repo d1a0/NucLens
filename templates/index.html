@@ -364,6 +364,67 @@
                         <button id="upload-nuclei-btn" class="btn-primary">上传并配置</button>
                     </div>
                 </div>
+                
+                <!-- HTTPS 证书管理 -->
+                <div class="settings-section">
+                    <h3>HTTPS 证书管理</h3>
+                    <p class="settings-description">
+                        配置 HTTPS 加密访问。上传证书后需要在 config.py 中设置 HTTPS_ENABLED = True 并重启服务。
+                    </p>
+                    
+                    <div class="settings-info">
+                        <div class="info-row">
+                            <label>HTTPS 状态：</label>
+                            <span id="https-status" class="status-badge">-</span>
+                        </div>
+                        <div class="info-row">
+                            <label>证书文件：</label>
+                            <span id="ssl-cert-status">-</span>
+                        </div>
+                        <div class="info-row">
+                            <label>私钥文件：</label>
+                            <span id="ssl-key-status">-</span>
+                        </div>
+                        <div id="ssl-cert-info" style="display: none;">
+                            <div class="info-row">
+                                <label>证书主体：</label>
+                                <span id="ssl-cert-subject">-</span>
+                            </div>
+                            <div class="info-row">
+                                <label>颁发者：</label>
+                                <span id="ssl-cert-issuer">-</span>
+                            </div>
+                            <div class="info-row">
+                                <label>有效期：</label>
+                                <span id="ssl-cert-validity">-</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="settings-actions">
+                        <button id="generate-ssl-btn" class="btn-secondary">生成自签名证书</button>
+                        <button id="delete-ssl-btn" class="btn-secondary" style="color: #e74c3c;">删除证书</button>
+                    </div>
+                </div>
+                
+                <div class="settings-section">
+                    <h3>上传 SSL 证书</h3>
+                    <p class="settings-description">
+                        上传您的 SSL 证书（PEM 格式）。需要同时上传证书文件和私钥文件。
+                    </p>
+                    
+                    <div class="upload-ssl-form">
+                        <div class="form-group">
+                            <label>证书文件 (cert.pem)</label>
+                            <input type="file" id="ssl-cert-input" accept=".pem,.crt,.cer">
+                        </div>
+                        <div class="form-group">
+                            <label>私钥文件 (key.pem)</label>
+                            <input type="file" id="ssl-key-input" accept=".pem,.key">
+                        </div>
+                        <button id="upload-ssl-btn" class="btn-primary">上传证书</button>
+                    </div>
+                </div>
             </div>
         </section>
 

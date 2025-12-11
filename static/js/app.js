@@ -2152,10 +2152,154 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             
             document.getElementById('nuclei-version').textContent = '-';
+            
+            // 加载 SSL 设置
+            loadSSLSettings();
         } catch (error) {
             console.error('加载设置失败:', error);
             showToast('加载设置失败', 'error');
         }
+    }
+    
+    // 加载 SSL 证书设置
+    async function loadSSLSettings() {
+        try {
+            const ssl = await api.request('/settings/ssl');
+            
+            // HTTPS 状态
+            const httpsStatusEl = document.getElementById('https-status');
+            if (httpsStatusEl) {
+                if (ssl.https_enabled) {
+                    httpsStatusEl.textContent = '已启用';
+                    httpsStatusEl.className = 'status-badge available';
+                } else {
+                    httpsStatusEl.textContent = '未启用';
+                    httpsStatusEl.className = 'status-badge unavailable';
+                }
+            }
+            
+            // 证书状态
+            const certStatusEl = document.getElementById('ssl-cert-status');
+            if (certStatusEl) {
+                certStatusEl.textContent = ssl.cert_exists ? '✓ 已上传' : '✗ 未上传';
+                certStatusEl.style.color = ssl.cert_exists ? '#27ae60' : '#e74c3c';
+            }
+            
+            // 私钥状态
+            const keyStatusEl = document.getElementById('ssl-key-status');
+            if (keyStatusEl) {
+                keyStatusEl.textContent = ssl.key_exists ? '✓ 已上传' : '✗ 未上传';
+                keyStatusEl.style.color = ssl.key_exists ? '#27ae60' : '#e74c3c';
+            }
+            
+            // 证书详情
+            const certInfoEl = document.getElementById('ssl-cert-info');
+            if (certInfoEl && ssl.cert_info && !ssl.cert_info.error && !ssl.cert_info.note) {
+                certInfoEl.style.display = 'block';
+                document.getElementById('ssl-cert-subject').textContent = ssl.cert_info.subject || '-';
+                document.getElementById('ssl-cert-issuer').textContent = ssl.cert_info.issuer || '-';
+                
+                const notBefore = ssl.cert_info.not_before ? new Date(ssl.cert_info.not_before).toLocaleString() : '-';
+                const notAfter = ssl.cert_info.not_after ? new Date(ssl.cert_info.not_after).toLocaleString() : '-';
+                document.getElementById('ssl-cert-validity').textContent = `${notBefore} 至 ${notAfter}`;
+            } else if (certInfoEl) {
+                certInfoEl.style.display = 'none';
+            }
+        } catch (error) {
+            console.error('加载SSL设置失败:', error);
+        }
+    }
+    
+    // 生成自签名证书
+    const generateSSLBtn = document.getElementById('generate-ssl-btn');
+    if (generateSSLBtn) {
+        generateSSLBtn.addEventListener('click', async () => {
+            const commonName = prompt('请输入域名（Common Name）:', 'localhost');
+            if (!commonName) return;
+            
+            generateSSLBtn.disabled = true;
+            generateSSLBtn.textContent = '生成中...';
+            
+            try {
+                const result = await api.request('/settings/ssl/generate', {
+                    method: 'POST',
+                    body: JSON.stringify({ common_name: commonName, days_valid: 365 })
+                });
+                showToast(result.msg, 'success');
+                loadSSLSettings();
+            } catch (error) {
+                showToast(error.msg || '生成证书失败', 'error');
+            } finally {
+                generateSSLBtn.disabled = false;
+                generateSSLBtn.textContent = '生成自签名证书';
+            }
+        });
+    }
+    
+    // 删除证书
+    const deleteSSLBtn = document.getElementById('delete-ssl-btn');
+    if (deleteSSLBtn) {
+        deleteSSLBtn.addEventListener('click', async () => {
+            if (!confirm('确定要删除 SSL 证书吗？删除后 HTTPS 将不可用。')) return;
+            
+            try {
+                const result = await api.request('/settings/ssl/delete', { method: 'DELETE' });
+                showToast(result.msg, 'success');
+                loadSSLSettings();
+            } catch (error) {
+                showToast(error.msg || '删除失败', 'error');
+            }
+        });
+    }
+    
+    // 上传 SSL 证书
+    const uploadSSLBtn = document.getElementById('upload-ssl-btn');
+    const sslCertInput = document.getElementById('ssl-cert-input');
+    const sslKeyInput = document.getElementById('ssl-key-input');
+    
+    if (uploadSSLBtn && sslCertInput && sslKeyInput) {
+        uploadSSLBtn.addEventListener('click', async () => {
+            const certFile = sslCertInput.files[0];
+            const keyFile = sslKeyInput.files[0];
+            
+            if (!certFile || !keyFile) {
+                showToast('请选择证书文件和私钥文件', 'warning');
+                return;
+            }
+            
+            uploadSSLBtn.disabled = true;
+            uploadSSLBtn.textContent = '上传中...';
+            
+            try {
+                const formData = new FormData();
+                formData.append('cert', certFile);
+                formData.append('key', keyFile);
+                
+                const response = await fetch('/api/settings/ssl/upload', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${state.accessToken}`
+                    },
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    showToast(result.msg, 'success');
+                    sslCertInput.value = '';
+                    sslKeyInput.value = '';
+                    loadSSLSettings();
+                } else {
+                    showToast(result.msg || '上传失败', 'error');
+                }
+            } catch (error) {
+                showToast('上传失败', 'error');
+            } finally {
+                uploadSSLBtn.disabled = false;
+                uploadSSLBtn.textContent = '上传证书';
+            }
+        });
     }
 
     // 测试 Nuclei

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # 版本号
-__version__ = '2.0.1'
+__version__ = '2.0.6'
 
 import os
 import subprocess
@@ -11,6 +11,7 @@ import zipfile
 import io
 import tempfile
 import secrets
+import ipaddress
 from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory, render_template, send_file
 from flask_sqlalchemy import SQLAlchemy
@@ -1618,7 +1619,226 @@ def reset_nuclei_settings():
     })
 
 
+# --- SSL/HTTPS 证书管理 ---
+CERTS_FOLDER = os.path.join(basedir, 'certs')
+
+@app.route('/api/settings/ssl', methods=['GET'])
+@role_required(['admin'])
+def get_ssl_settings():
+    """获取 SSL/HTTPS 配置状态（仅管理员）"""
+    # 从配置文件读取
+    try:
+        import config
+        https_enabled = getattr(config, 'HTTPS_ENABLED', False)
+        cert_path = getattr(config, 'SSL_CERT_PATH', 'certs/cert.pem')
+        key_path = getattr(config, 'SSL_KEY_PATH', 'certs/key.pem')
+    except ImportError:
+        https_enabled = False
+        cert_path = 'certs/cert.pem'
+        key_path = 'certs/key.pem'
+    
+    # 检查证书文件是否存在
+    abs_cert_path = cert_path if os.path.isabs(cert_path) else os.path.join(basedir, cert_path)
+    abs_key_path = key_path if os.path.isabs(key_path) else os.path.join(basedir, key_path)
+    
+    cert_exists = os.path.isfile(abs_cert_path)
+    key_exists = os.path.isfile(abs_key_path)
+    
+    # 获取证书信息
+    cert_info = None
+    if cert_exists:
+        try:
+            import ssl
+            import datetime
+            # 读取证书信息
+            with open(abs_cert_path, 'r') as f:
+                cert_content = f.read()
+            # 使用 OpenSSL 解析证书（如果可用）
+            try:
+                from cryptography import x509
+                from cryptography.hazmat.backends import default_backend
+                cert = x509.load_pem_x509_certificate(cert_content.encode(), default_backend())
+                cert_info = {
+                    'subject': cert.subject.rfc4514_string(),
+                    'issuer': cert.issuer.rfc4514_string(),
+                    'not_before': cert.not_valid_before_utc.isoformat() if hasattr(cert, 'not_valid_before_utc') else cert.not_valid_before.isoformat(),
+                    'not_after': cert.not_valid_after_utc.isoformat() if hasattr(cert, 'not_valid_after_utc') else cert.not_valid_after.isoformat(),
+                    'serial_number': str(cert.serial_number)
+                }
+            except ImportError:
+                # cryptography 库不可用，只返回基本信息
+                cert_info = {'note': '安装 cryptography 库可查看详细证书信息'}
+        except Exception as e:
+            cert_info = {'error': str(e)}
+    
+    return jsonify({
+        "https_enabled": https_enabled,
+        "cert_path": cert_path,
+        "key_path": key_path,
+        "cert_exists": cert_exists,
+        "key_exists": key_exists,
+        "cert_info": cert_info
+    })
+
+
+@app.route('/api/settings/ssl/upload', methods=['POST'])
+@role_required(['admin'])
+def upload_ssl_certificate():
+    """上传 SSL 证书和私钥（仅管理员）"""
+    if 'cert' not in request.files or 'key' not in request.files:
+        return jsonify({"msg": "请同时上传证书文件(cert)和私钥文件(key)"}), 400
+    
+    cert_file = request.files['cert']
+    key_file = request.files['key']
+    
+    if cert_file.filename == '' or key_file.filename == '':
+        return jsonify({"msg": "请选择证书和私钥文件"}), 400
+    
+    # 确保目录存在
+    if not os.path.exists(CERTS_FOLDER):
+        os.makedirs(CERTS_FOLDER)
+    
+    cert_path = os.path.join(CERTS_FOLDER, 'cert.pem')
+    key_path = os.path.join(CERTS_FOLDER, 'key.pem')
+    
+    try:
+        # 保存文件
+        cert_file.save(cert_path)
+        key_file.save(key_path)
+        
+        # 验证证书和私钥是否匹配
+        try:
+            import ssl
+            context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+            context.load_cert_chain(cert_path, key_path)
+        except ssl.SSLError as e:
+            # 删除无效的证书文件
+            if os.path.exists(cert_path):
+                os.remove(cert_path)
+            if os.path.exists(key_path):
+                os.remove(key_path)
+            return jsonify({"msg": f"证书验证失败: {str(e)}"}), 400
+        
+        return jsonify({
+            "msg": "SSL 证书上传成功！请在 config.py 中设置 HTTPS_ENABLED = True 并重启服务",
+            "cert_path": "certs/cert.pem",
+            "key_path": "certs/key.pem"
+        })
+        
+    except Exception as e:
+        return jsonify({"msg": f"上传失败: {str(e)}"}), 500
+
+
+@app.route('/api/settings/ssl/generate', methods=['POST'])
+@role_required(['admin'])
+def generate_self_signed_cert():
+    """生成自签名证书（仅管理员）"""
+    try:
+        from cryptography import x509
+        from cryptography.x509.oid import NameOID
+        from cryptography.hazmat.primitives import hashes
+        from cryptography.hazmat.backends import default_backend
+        from cryptography.hazmat.primitives.asymmetric import rsa
+        from cryptography.hazmat.primitives import serialization
+        import datetime
+        
+        data = request.get_json() or {}
+        common_name = data.get('common_name', 'localhost')
+        days_valid = data.get('days_valid', 365)
+        
+        # 生成私钥
+        key = rsa.generate_private_key(
+            public_exponent=65537,
+            key_size=2048,
+            backend=default_backend()
+        )
+        
+        # 生成证书
+        subject = issuer = x509.Name([
+            x509.NameAttribute(NameOID.COUNTRY_NAME, "CN"),
+            x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, "Beijing"),
+            x509.NameAttribute(NameOID.LOCALITY_NAME, "Beijing"),
+            x509.NameAttribute(NameOID.ORGANIZATION_NAME, "NucLens"),
+            x509.NameAttribute(NameOID.COMMON_NAME, common_name),
+        ])
+        
+        cert = x509.CertificateBuilder().subject_name(
+            subject
+        ).issuer_name(
+            issuer
+        ).public_key(
+            key.public_key()
+        ).serial_number(
+            x509.random_serial_number()
+        ).not_valid_before(
+            datetime.datetime.utcnow()
+        ).not_valid_after(
+            datetime.datetime.utcnow() + datetime.timedelta(days=days_valid)
+        ).add_extension(
+            x509.SubjectAlternativeName([
+                x509.DNSName("localhost"),
+                x509.DNSName(common_name),
+                x509.IPAddress(ipaddress.IPv4Address("127.0.0.1")),
+            ]),
+            critical=False,
+        ).sign(key, hashes.SHA256(), default_backend())
+        
+        # 确保目录存在
+        if not os.path.exists(CERTS_FOLDER):
+            os.makedirs(CERTS_FOLDER)
+        
+        # 保存证书
+        cert_path = os.path.join(CERTS_FOLDER, 'cert.pem')
+        key_path = os.path.join(CERTS_FOLDER, 'key.pem')
+        
+        with open(cert_path, 'wb') as f:
+            f.write(cert.public_bytes(serialization.Encoding.PEM))
+        
+        with open(key_path, 'wb') as f:
+            f.write(key.private_bytes(
+                encoding=serialization.Encoding.PEM,
+                format=serialization.PrivateFormat.TraditionalOpenSSL,
+                encryption_algorithm=serialization.NoEncryption()
+            ))
+        
+        return jsonify({
+            "msg": f"自签名证书生成成功！有效期 {days_valid} 天。请在 config.py 中设置 HTTPS_ENABLED = True 并重启服务",
+            "cert_path": "certs/cert.pem",
+            "key_path": "certs/key.pem",
+            "common_name": common_name,
+            "days_valid": days_valid
+        })
+        
+    except ImportError:
+        return jsonify({"msg": "请先安装 cryptography 库: pip install cryptography"}), 400
+    except Exception as e:
+        return jsonify({"msg": f"生成证书失败: {str(e)}"}), 500
+
+
+@app.route('/api/settings/ssl/delete', methods=['DELETE'])
+@role_required(['admin'])
+def delete_ssl_certificate():
+    """删除 SSL 证书（仅管理员）"""
+    cert_path = os.path.join(CERTS_FOLDER, 'cert.pem')
+    key_path = os.path.join(CERTS_FOLDER, 'key.pem')
+    
+    deleted = []
+    if os.path.exists(cert_path):
+        os.remove(cert_path)
+        deleted.append('cert.pem')
+    if os.path.exists(key_path):
+        os.remove(key_path)
+        deleted.append('key.pem')
+    
+    if deleted:
+        return jsonify({"msg": f"已删除: {', '.join(deleted)}"})
+    else:
+        return jsonify({"msg": "没有找到证书文件"})
+
+
 if __name__ == '__main__':
+    import ipaddress  # 用于生成自签名证书
+    
     with app.app_context():
         db.create_all()
         # 创建默认管理员账户
@@ -1634,7 +1854,39 @@ if __name__ == '__main__':
             db.session.commit()
             print("默认管理员账户已创建: admin / admin")
     
-    # 生产环境使用0.0.0.0监听所有网卡，关闭debug
-    import os
-    debug_mode = os.environ.get('FLASK_ENV') != 'production'
-    app.run(host='0.0.0.0', port=5001, debug=debug_mode)
+    # 读取配置
+    try:
+        import config
+        https_enabled = getattr(config, 'HTTPS_ENABLED', False)
+        ssl_cert = getattr(config, 'SSL_CERT_PATH', 'certs/cert.pem')
+        ssl_key = getattr(config, 'SSL_KEY_PATH', 'certs/key.pem')
+        app_port = getattr(config, 'APP_PORT', 5001)
+        debug_mode = getattr(config, 'DEBUG_MODE', False)
+    except ImportError:
+        https_enabled = False
+        ssl_cert = 'certs/cert.pem'
+        ssl_key = 'certs/key.pem'
+        app_port = 5001
+        debug_mode = False
+    
+    # 环境变量覆盖
+    if os.environ.get('FLASK_ENV') == 'production':
+        debug_mode = False
+    
+    # 启动服务
+    if https_enabled:
+        # 转换为绝对路径
+        abs_cert = ssl_cert if os.path.isabs(ssl_cert) else os.path.join(basedir, ssl_cert)
+        abs_key = ssl_key if os.path.isabs(ssl_key) else os.path.join(basedir, ssl_key)
+        
+        if os.path.exists(abs_cert) and os.path.exists(abs_key):
+            print(f"🔒 HTTPS 模式启动，端口: {app_port}")
+            app.run(host='0.0.0.0', port=app_port, debug=debug_mode, ssl_context=(abs_cert, abs_key))
+        else:
+            print(f"⚠️ 证书文件不存在，回退到 HTTP 模式")
+            print(f"   证书路径: {abs_cert}")
+            print(f"   私钥路径: {abs_key}")
+            app.run(host='0.0.0.0', port=app_port, debug=debug_mode)
+    else:
+        print(f"🌐 HTTP 模式启动，端口: {app_port}")
+        app.run(host='0.0.0.0', port=app_port, debug=debug_mode)

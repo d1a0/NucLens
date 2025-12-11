@@ -1794,6 +1794,34 @@ table td {
     border-color: #667eea;
 }
 
+/* SSL 证书上传表单 */
+.upload-ssl-form {
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+}
+
+.upload-ssl-form .form-group {
+    margin-bottom: 16px;
+}
+
+.upload-ssl-form .form-group:last-of-type {
+    margin-bottom: 20px;
+}
+
+.upload-ssl-form input[type="file"] {
+    padding: 10px;
+    border: 2px dashed #ddd;
+    border-radius: 8px;
+    width: 100%;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.upload-ssl-form input[type="file"]:hover {
+    border-color: #667eea;
+}
+
 /* Status badges for settings */
 .status-badge {
     display: inline-block;
