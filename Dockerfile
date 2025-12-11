@@ -11,8 +11,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
     DEBIAN_FRONTEND=noninteractive
 
-# 安装系统依赖和 MySQL
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 替换 apt-get 为国内源
+RUN sed -i 's@http://deb.debian.org@https://mirrors.aliyun.com@g' /etc/apt/sources.list && \
+    sed -i 's@http://security.debian.org@https://mirrors.aliyun.com@g' /etc/apt/sources.list && \
+    apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
     ca-certificates \
