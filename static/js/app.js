@@ -165,9 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
         async handleResponse(response, skipAlert = false) {
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ msg: '发生未知错误' }));
-                const authErrors = ['User not found', 'Token has expired', 'Invalid token'];
+                const authErrors = ['User not found', 'Token has expired', 'Invalid token', 'Signature verification failed', 'Signature has expired'];
                 if (authErrors.some(err => errorData.msg && errorData.msg.includes(err))) {
-                    if (!skipAlert) alert('会话已失效，请重新登录');
                     handleLogout();
                     return Promise.reject(errorData);
                 }
@@ -471,6 +470,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 navigateToHash(hash);
             }
         });
+
+        // 加载版本信息
+        loadVersionInfo();
+    }
+
+    // --- 加载版本信息 ---
+    async function loadVersionInfo() {
+        try {
+            const response = await fetch('/api/version');
+            if (response.ok) {
+                const data = await response.json();
+                const versionEl = document.getElementById('version-info');
+                if (versionEl) {
+                    versionEl.textContent = `${data.name} v${data.version}`;
+                }
+            }
+        } catch (error) {
+            console.log('获取版本信息失败');
+        }
     }
 
     // --- Event Handlers: Auth ---
@@ -770,7 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 批量验证
+    // 批量验证（分批处理，每批10条）
     batchValidateBtn?.addEventListener('click', async () => {
         if (selectedRuleIds.size === 0) {
             showToast('请先选择要验证的规则', 'warning');
@@ -778,18 +796,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         const ids = Array.from(selectedRuleIds);
+        const batchSize = 10; // 每批10条
+        const totalBatches = Math.ceil(ids.length / batchSize);
+        let totalSuccess = 0;
+        let totalFailed = 0;
+        let allFailed = [];
         
         try {
             batchValidateBtn.disabled = true;
-            batchValidateBtn.textContent = '验证中...';
             
-            const result = await api.batchValidate(ids);
+            for (let i = 0; i < totalBatches; i++) {
+                const start = i * batchSize;
+                const end = Math.min(start + batchSize, ids.length);
+                const batchIds = ids.slice(start, end);
+                
+                // 更新按钮显示进度
+                batchValidateBtn.textContent = `验证中 (${end}/${ids.length})...`;
+                
+                try {
+                    const result = await api.batchValidate(batchIds);
+                    totalSuccess += result.success ? result.success.length : 0;
+                    if (result.failed && result.failed.length > 0) {
+                        totalFailed += result.failed.length;
+                        allFailed = allFailed.concat(result.failed);
+                    }
+                } catch (error) {
+                    console.error(`批次 ${i + 1} 验证失败:`, error);
+                    totalFailed += batchIds.length;
+                }
+                
+                // 每批次间隔100ms，避免服务器压力过大
+                if (i < totalBatches - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
             
-            const successCount = result.success ? result.success.length : 0;
-            const failCount = result.failed ? result.failed.length : 0;
-            
-            showToast(`批量验证完成！成功 ${successCount} 个${failCount > 0 ? '，失败 ' + failCount + ' 个' : ''}`, 
-                failCount > 0 ? 'warning' : 'success', 3000);
+            showToast(`批量验证完成！成功 ${totalSuccess} 个${totalFailed > 0 ? '，失败 ' + totalFailed + ' 个' : ''}`, 
+                totalFailed > 0 ? 'warning' : 'success', 3000);
             
             // 清空选择并刷新
             selectedRuleIds.clear();

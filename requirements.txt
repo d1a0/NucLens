@@ -3,3 +3,4 @@ Flask-JWT-Extended
 Flask-SQLAlchemy
 Werkzeug
 PyYAML
+PyMySQL

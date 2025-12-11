@@ -27,7 +27,56 @@
 
 ## 🚀 部署方式
 
-### 方式一：本地部署
+### 方式一：Docker Compose（推荐）
+
+```bash
+# 克隆项目
+git clone https://github.com/d1a0/NucLens.git
+cd NucLens
+
+# 启动服务
+docker-compose up -d
+```
+
+> ℹ️ Docker 镜像已内置 MySQL，通过 `config.py` 配置数据库连接
+
+**修改配置**：编辑 `config.py` 文件
+
+```python
+# 数据库配置
+MYSQL_HOST = 'localhost'      # MySQL 主机地址
+MYSQL_PORT = 3306             # MySQL 端口
+MYSQL_USER = 'root'           # 数据库用户名
+MYSQL_PASSWORD = '123456'     # 数据库密码（请修改）
+MYSQL_DATABASE = 'nuclens'    # 数据库名
+
+# JWT 密钥（留空则自动生成）
+JWT_SECRET_KEY = ''
+
+# 应用端口
+APP_PORT = 5001
+```
+
+### 方式二：Docker
+
+```bash
+# 克隆项目
+git clone https://github.com/d1a0/NucLens.git
+cd NucLens
+
+# 构建镜像
+docker build -t nuclens .
+
+# 运行容器
+docker run -d -p 5001:5001 --name nuclens \
+  -v $(pwd)/config.py:/app/config.py \
+  -v $(pwd)/nuclei_rules:/app/nuclei_rules \
+  -v $(pwd)/scan_results:/app/scan_results \
+  -v nuclens_mysql:/var/lib/mysql \
+  nuclens
+```
+
+### 方式三：本地部署
 
 ```bash
 # 克隆项目
@@ -40,35 +89,15 @@ pip install -r requirements.txt
 # 下载 Nuclei 放入 bin/ 目录
 # https://github.com/projectdiscovery/nuclei/releases
 
+# 安装并启动 MySQL（需手动安装）
+# 创建数据库：CREATE DATABASE nuclens CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+# 修改 config.py 配置数据库连接
 # 启动
 python app.py
 ```
 
-
-### 方式二：Docker Compose（推荐）
-
-```bash
-# 克隆项目
-git clone https://github.com/d1a0/NucLens.git
-cd NucLens
-
-docker-compose up -d
-```
-
-
-### 方式三：Docker
-
-```bash
-# 克隆项目
-git clone https://github.com/d1a0/NucLens.git
-cd NucLens
-
-# 构建镜像
-docker build -t nuclens .
-
-# 运行容器
-docker run -d -p 5001:5001 --name nuclens nuclens
-```
+> 💡 数据库表会在首次启动时自动创建
 
 ---
 
@@ -81,9 +110,11 @@ docker run -d -p 5001:5001 --name nuclens nuclens
 ```
 NucLens/
 ├── app.py              # 主程序
+├── config.py           # 配置文件（数据库、JWT等）
 ├── requirements.txt    # 依赖
 ├── Dockerfile
 ├── docker-compose.yml
+├── entrypoint.sh       # Docker 启动脚本
 ├── bin/                # Nuclei 二进制
 ├── nuclei_rules/       # 规则存储
 ├── scan_results/       # 扫描结果
@@ -102,20 +133,11 @@ NucLens/
 ## 🔒 安全建议
 
 1. 修改默认 admin 密码
-2. 生产环境修改 `JWT_SECRET_KEY`
+2. 修改 `config.py` 中的 `JWT_SECRET_KEY` 和 `MYSQL_PASSWORD`
 3. 建议内网部署
-4. 定期备份 `app.db`
+4. 定期备份 MySQL 数据
 
 ## 🔄 版本更新
-
-### 本地部署更新
-
-```bash
-cd NucLens
-git pull
-pip install -r requirements.txt  # 如有新依赖
-python app.py
-```
 
 ### Docker Compose 更新（推荐）
 
@@ -139,22 +161,28 @@ docker stop nuclens && docker rm nuclens
 # 重新构建并运行
 docker build -t nuclens .
 docker run -d -p 5001:5001 --name nuclens \
-  -v nuclens_data:/app \
+  -v $(pwd)/config.py:/app/config.py \
   -v $(pwd)/nuclei_rules:/app/nuclei_rules \
   -v $(pwd)/scan_results:/app/scan_results \
+  -v nuclens_mysql:/var/lib/mysql \
   nuclens
 ```
 
-> ⚠️ **注意**：如果首次部署时未挂载 volume，更新前请先备份数据：
-> ```bash
-> docker cp nuclens:/app/app.db ./app.db.backup
-> ```
+### 本地部署更新
+
+```bash
+cd NucLens
+git pull
+pip install -r requirements.txt  # 如有新依赖
+python app.py
+```
 
 ### 数据持久化说明
 
 | 数据 | 存储位置 | 说明 |
 |------|----------|------|
-| 数据库 | `app.db` | 用户、规则元数据、扫描任务 |
+| 数据库 | MySQL `/var/lib/mysql` | 用户、规则元数据、扫描任务 |
+| 配置文件 | `config.py` | 数据库连接、JWT密钥等 |
 | 规则文件 | `nuclei_rules/` | YAML 规则文件 |
 | 扫描结果 | `scan_results/` | JSON 格式扫描报告 |
 | Nuclei | `bin/` | 扫描引擎二进制 |

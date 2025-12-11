@@ -8,13 +8,18 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     FLASK_APP=app.py \
-    FLASK_ENV=production
+    FLASK_ENV=production \
+    DEBIAN_FRONTEND=noninteractive
 
-# 安装系统依赖
+# 安装系统依赖和 MySQL
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
     ca-certificates \
+    gnupg \
+    lsb-release \
+    default-mysql-server \
+    default-mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # 下载并安装 Nuclei (自动检测架构，使用 gh-proxy 加速)
@@ -38,23 +43,29 @@ RUN ARCH=$(dpkg --print-architecture) && \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# 复制应用代码
+# 复制应用代码和配置
 COPY app.py .
+COPY config.py .
 COPY static/ static/
 COPY templates/ templates/
 
 # 创建必要目录
-RUN mkdir -p bin nuclei_rules scan_results data
+RUN mkdir -p bin nuclei_rules scan_results data /var/run/mysqld /var/lib/mysql
+RUN chown -R mysql:mysql /var/run/mysqld /var/lib/mysql
 
 # 创建符号链接使应用能找到 nuclei
 RUN ln -s /usr/local/bin/nuclei /app/bin/nuclei
+
+# 复制启动脚本
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # 暴露端口
 EXPOSE 5001
 
 # 健康检查
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:5001/ || exit 1
 
 # 启动命令
-CMD ["python", "app.py"]
+ENTRYPOINT ["/entrypoint.sh"]

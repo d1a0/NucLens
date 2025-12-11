@@ -273,16 +273,16 @@
                 <button id="add-user-btn" class="btn-primary">+ 添加用户</button>
             </div>
             
-            <div class="filter-bar">
-                <div class="filter-group" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                    <select id="filter-user-status">
-                        <option value="">全部状态</option>
+            <div class="filter-bar" style="background: #f8f9fa; padding: 0.75rem 1rem; border-radius: 8px;">
+                <div class="filter-group" style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+                    <select id="filter-user-status" style="width: 90px; padding: 6px 8px;">
+                        <option value="">状态</option>
                         <option value="pending">待审核</option>
                         <option value="approved">已通过</option>
                         <option value="rejected">已拒绝</option>
                     </select>
-                    <input type="text" id="filter-user-search" placeholder="搜索用户名..." style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 4px; width: 200px;">
-                    <button id="filter-users-btn" class="btn-secondary">搜索</button>
+                    <input type="text" id="filter-user-search" placeholder="搜索用户名" style="padding: 6px 10px; border: 1px solid #ddd; border-radius: 6px; width: 140px; font-size: 0.85rem;">
+                    <button id="filter-users-btn" class="btn-secondary" style="padding: 6px 12px;">搜索</button>
                 </div>
             </div>
 
@@ -479,6 +479,9 @@
     
     <!-- 通用 Toast 通知 -->
     <div id="toast-notification" class="toast-notification"></div>
+
+    <!-- 版本信息 -->
+    <div id="version-info" class="version-info"></div>
 
     <script src="/static/js/app.js"></script>
 </body>

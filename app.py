@@ -1,4 +1,8 @@
 # -*- coding: utf-8 -*-
+
+# 版本号
+__version__ = '2.0.1'
+
 import os
 import subprocess
 import threading
@@ -26,10 +30,33 @@ DEFAULT_NUCLEI_PATH = os.path.join(basedir, 'bin', 'nuclei.exe')
 # Nuclei 二进制文件上传目录
 NUCLEI_BIN_FOLDER = os.path.join(basedir, 'bin')
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(datadir, 'app.db')
+# 加载配置文件
+try:
+    import config
+    MYSQL_HOST = getattr(config, 'MYSQL_HOST', 'localhost')
+    MYSQL_PORT = getattr(config, 'MYSQL_PORT', 3306)
+    MYSQL_USER = getattr(config, 'MYSQL_USER', 'root')
+    MYSQL_PASSWORD = getattr(config, 'MYSQL_PASSWORD', '123456')
+    MYSQL_DATABASE = getattr(config, 'MYSQL_DATABASE', 'nuclens')
+    JWT_SECRET = getattr(config, 'JWT_SECRET_KEY', '')
+except ImportError:
+    # 配置文件不存在时使用默认值
+    MYSQL_HOST = 'localhost'
+    MYSQL_PORT = 3306
+    MYSQL_USER = 'root'
+    MYSQL_PASSWORD = '123456'
+    MYSQL_DATABASE = 'nuclens'
+    JWT_SECRET = ''
+
+# MySQL 数据库配置
+app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# JWT密钥：优先使用环境变量，否则自动生成随机密钥
-app.config['JWT_SECRET_KEY'] = os.environ.get('JWT_SECRET_KEY') or secrets.token_hex(32)
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'pool_recycle': 300,
+    'pool_pre_ping': True
+}
+# JWT密钥：优先使用配置文件，否则自动生成随机密钥
+app.config['JWT_SECRET_KEY'] = JWT_SECRET or secrets.token_hex(32)
 app.config['UPLOAD_FOLDER'] = os.path.join(basedir, 'nuclei_rules')
 app.config['SCAN_RESULTS_FOLDER'] = os.path.join(basedir, 'scan_results')
 
@@ -308,6 +335,14 @@ def role_required(required_roles):
 def index():
     """提供前端应用页面"""
     return render_template('index.html')
+
+@app.route('/api/version')
+def get_version():
+    """获取系统版本信息"""
+    return jsonify({
+        'version': __version__,
+        'name': 'NucLens'
+    })
 
 @app.route('/api/register', methods=['POST'])
 def register():
