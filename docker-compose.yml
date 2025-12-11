@@ -17,7 +17,7 @@ services:
       - mysql_data:/var/lib/mysql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "sh", "-c", "protocol=${USE_HTTPS:+https} || protocol=http; wget --no-verbose --tries=1 --spider $protocol://localhost:5001/"]
+      test: ["CMD", "sh", "-c", "protocol=$(python3 -c \"import config; print('https' if config.HTTPS_ENABLED else 'http')\"); wget --no-verbose --tries=1 --spider $protocol://localhost:5001/"]
       interval: 30s
       timeout: 10s
       retries: 3

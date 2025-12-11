@@ -68,9 +68,10 @@ RUN chmod +x /entrypoint.sh
 # 暴露端口
 EXPOSE 5001
 
-# 健康检查
+# 健康检查支持 HTTP 和 HTTPS（基于 config.py 配置）
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:5001/ || exit 1
+    CMD protocol=$(python3 -c "import config; print('https' if config.HTTPS_ENABLED else 'http')") && \
+    wget --no-verbose --tries=1 --spider $protocol://localhost:5001/ || exit 1
 
 # 启动命令
 ENTRYPOINT ["/entrypoint.sh"]
