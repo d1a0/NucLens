@@ -11,8 +11,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
     DEBIAN_FRONTEND=noninteractive
 
-# 安装必要依赖和 MariaDB
-RUN apt-get update --allow-releaseinfo-change && \
+# 替换为国内源以加速依赖安装
+RUN echo "deb https://mirrors.aliyun.com/debian bullseye main" > /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main" >> /etc/apt/sources.list && \
+    rm -rf /etc/apt/sources.list.d/* && \
+    apt-get update --allow-releaseinfo-change && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \
     unzip \
