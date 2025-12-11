@@ -647,22 +647,34 @@ def list_yaml_rules():
     if status_filter:
         query = query.filter(YamlRule.status == status_filter)
     
-    # 搜索筛选（名称或标签）
+    # 搜索筛选（名称或标签）- 使用子查询避免影响主查询的关联加载
     if search_filter:
         search_term = f'%{search_filter}%'
-        query = query.outerjoin(YamlRule.tags).filter(
+        # 使用子查询查找匹配标签的规则ID
+        tag_match_subquery = db.session.query(rule_tags.c.rule_id).join(
+            Tag, Tag.id == rule_tags.c.tag_id
+        ).filter(Tag.name.ilike(search_term)).subquery()
+        
+        query = query.filter(
             db.or_(
                 YamlRule.name.ilike(search_term),
-                Tag.name.ilike(search_term)
+                YamlRule.id.in_(tag_match_subquery)
             )
-        ).distinct()
+        )
 
+    # 标签筛选 - 使用子查询避免影响主查询的关联加载
     if tags_filter:
         tag_names = tags_filter.split(',')
-        query = query.join(YamlRule.tags).filter(Tag.name.in_(tag_names))
+        tag_match_subquery = db.session.query(rule_tags.c.rule_id).join(
+            Tag, Tag.id == rule_tags.c.tag_id
+        ).filter(Tag.name.in_(tag_names)).subquery()
+        
+        query = query.filter(YamlRule.id.in_(tag_match_subquery))
 
-    # 分页查询
-    pagination = query.order_by(YamlRule.uploaded_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
+    # 分页查询 - 预加载标签关系避免N+1问题
+    pagination = query.options(
+        db.joinedload(YamlRule.tags)
+    ).order_by(YamlRule.uploaded_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
     
     return jsonify({
         'rules': [rule.to_dict() for rule in pagination.items],
