@@ -23,6 +23,7 @@
 - 🔍 **漏洞扫描** - 按标签选择规则，执行目标扫描
 - 📊 **结果查看** - 扫描历史和详细漏洞报告
 - ⚙️ **系统设置** - 上传 Nuclei 二进制，支持 Windows/Linux/macOS
+- 🔒 **HTTPS 支持** - 可选启用 HTTPS，支持自签名证书生成
 - 👤 **个人中心** - 用户自行修改密码
 
 ## 🚀 部署方式
@@ -109,17 +110,22 @@ python app.py
 
 ```
 NucLens/
-├── app.py              # 主程序
-├── config.py           # 配置文件（数据库、JWT等）
-├── requirements.txt    # 依赖
-├── Dockerfile
-├── docker-compose.yml
-├── entrypoint.sh       # Docker 启动脚本
-├── bin/                # Nuclei 二进制
-├── nuclei_rules/       # 规则存储
-├── scan_results/       # 扫描结果
-├── static/             # 前端资源
-└── templates/          # 页面模板
+├── app.py                 # Flask 主程序
+├── config.py              # 配置文件（数据库、JWT、HTTPS等）
+├── requirements.txt       # Python 依赖
+├── Dockerfile             # Docker 镜像构建
+├── docker-compose.yml     # Docker Compose 编排
+├── entrypoint.sh          # Docker 启动脚本
+├── LICENSE                # MIT 许可证
+├── .gitignore             # Git 忽略规则
+├── bin/                   # Nuclei 二进制文件
+├── certs/                 # SSL 证书目录（git忽略）
+├── nuclei_rules/          # YAML 规则文件存储
+├── scan_results/          # 扫描结果 JSON 文件
+├── static/                # 前端静态资源
+│   ├── css/               # 样式文件
+│   └── js/                # JavaScript 文件
+└── templates/             # HTML 模板
 ```
 
 ## 🔧 用户角色
@@ -181,11 +187,11 @@ python app.py
 
 | 数据 | 存储位置 | 说明 |
 |------|----------|------|
-| 数据库 | MySQL `/var/lib/mysql` | 用户、规则元数据、扫描任务 |
-| 配置文件 | `config.py` | 数据库连接、JWT密钥等 |
+| 数据库 | Docker volume `mysql_data` | 用户、规则元数据、扫描任务 |
+| 配置文件 | `config.py` | 数据库连接、JWT密钥、HTTPS等 |
 | 规则文件 | `nuclei_rules/` | YAML 规则文件 |
 | 扫描结果 | `scan_results/` | JSON 格式扫描报告 |
-| Nuclei | `bin/` | 扫描引擎二进制 |
+| SSL证书 | `certs/` | HTTPS 证书和私钥 |
 
 ## 📄 许可证
 

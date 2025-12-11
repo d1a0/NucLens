@@ -165,10 +165,11 @@ document.addEventListener('DOMContentLoaded', () => {
         async handleResponse(response, skipAlert = false) {
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ msg: '发生未知错误' }));
-                const authErrors = ['User not found', 'Token has expired', 'Invalid token', 'Signature verification failed', 'Signature has expired'];
+                const authErrors = ['User not found', 'Token has expired', 'Invalid token', 'Signature verification failed', 'Signature has expired', 'Token is invalid', 'Token has been revoked'];
                 if (authErrors.some(err => errorData.msg && errorData.msg.includes(err))) {
                     handleLogout();
-                    return Promise.reject(errorData);
+                    // 认证错误不弹窗，直接跳转登录页
+                    return Promise.reject({ ...errorData, authError: true });
                 }
                 if (!skipAlert) alert(`错误: ${errorData.msg}`);
                 return Promise.reject(errorData);
