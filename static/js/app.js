@@ -2170,6 +2170,41 @@ document.addEventListener('DOMContentLoaded', () => {
             const httpsSelect = document.getElementById('https-enabled-select');
             if (httpsSelect) {
                 httpsSelect.value = ssl.https_enabled ? 'true' : 'false';
+                
+                // 绑定 change 事件 - 选择时直接保存
+                httpsSelect.onchange = async () => {
+                    const enabled = httpsSelect.value === 'true';
+                    const hintEl = document.getElementById('https-save-hint');
+                    
+                    httpsSelect.disabled = true;
+                    
+                    try {
+                        const result = await api.request('/settings/ssl/toggle', {
+                            method: 'POST',
+                            body: JSON.stringify({ enabled: enabled })
+                        });
+                        showToast(result.msg, 'success');
+                        
+                        // 显示保存提示
+                        if (hintEl) {
+                            hintEl.style.display = 'inline';
+                            hintEl.textContent = '已保存，重启生效';
+                            hintEl.style.color = '#27ae60';
+                        }
+                    } catch (error) {
+                        showToast(error.msg || '保存失败', 'error');
+                        // 恢复原值
+                        httpsSelect.value = ssl.https_enabled ? 'true' : 'false';
+                        
+                        if (hintEl) {
+                            hintEl.style.display = 'inline';
+                            hintEl.textContent = error.msg || '保存失败';
+                            hintEl.style.color = '#e74c3c';
+                        }
+                    } finally {
+                        httpsSelect.disabled = false;
+                    }
+                };
             }
             
             // 证书状态
@@ -2202,32 +2237,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('加载SSL设置失败:', error);
         }
-    }
-    
-    // 保存 HTTPS 状态
-    const saveHttpsBtn = document.getElementById('save-https-status-btn');
-    if (saveHttpsBtn) {
-        saveHttpsBtn.addEventListener('click', async () => {
-            const httpsSelect = document.getElementById('https-enabled-select');
-            const enabled = httpsSelect.value === 'true';
-            
-            saveHttpsBtn.disabled = true;
-            saveHttpsBtn.textContent = '保存中...';
-            
-            try {
-                const result = await api.request('/settings/ssl/toggle', {
-                    method: 'POST',
-                    body: JSON.stringify({ enabled: enabled })
-                });
-                showToast(result.msg, 'success');
-                loadSSLSettings();
-            } catch (error) {
-                showToast(error.msg || '保存失败', 'error');
-            } finally {
-                saveHttpsBtn.disabled = false;
-                saveHttpsBtn.textContent = '保存';
-            }
-        });
     }
     
     // 生成自签名证书

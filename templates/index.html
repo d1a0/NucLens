@@ -376,11 +376,11 @@
                         <div class="info-row">
                             <label>HTTPS 状态：</label>
                             <div class="https-toggle">
-                                <select id="https-enabled-select">
-                                    <option value="false">关闭</option>
-                                    <option value="true">启用</option>
+                                <select id="https-enabled-select" class="https-select">
+                                    <option value="false">关闭 (HTTP)</option>
+                                    <option value="true">启用 (HTTPS)</option>
                                 </select>
-                                <button id="save-https-status-btn" class="btn-primary btn-small">保存</button>
+                                <span id="https-save-hint" class="save-hint" style="display: none;">已保存，重启生效</span>
                             </div>
                         </div>
                         <div class="info-row">

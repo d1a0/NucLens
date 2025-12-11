@@ -1830,17 +1830,26 @@ table td {
 }
 
 .https-toggle select {
-    padding: 6px 12px;
+    padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 6px;
     font-size: 0.9rem;
     background: #fff;
     cursor: pointer;
+    min-width: 150px;
 }
 
-.https-toggle .btn-small {
-    padding: 6px 16px;
+.https-toggle select:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.https-toggle .save-hint {
     font-size: 0.85rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    background: #f0f9f0;
 }
 
 /* Status badges for settings */
