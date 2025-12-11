@@ -9,7 +9,7 @@ VERSION = '2.0.8'
 
 # ============ 数据库配置 ============
 # MySQL 连接配置
-MYSQL_HOST = 'localhost'      # 数据库主机地址
+MYSQL_HOST = 'mysql'          # 数据库主机地址（容器名）
 MYSQL_PORT = 3306             # 数据库端口
 MYSQL_USER = 'root'           # 数据库用户名
 MYSQL_PASSWORD = '123456'     # 数据库密码

@@ -13,15 +13,29 @@ services:
       - ./nuclei_rules:/app/nuclei_rules
       # 持久化扫描结果
       - ./scan_results:/app/scan_results
-      # 持久化 MySQL 数据
-      - mysql_data:/var/lib/mysql
     restart: unless-stopped
+    depends_on:
+      - mysql
     healthcheck:
       test: ["CMD", "sh", "-c", "protocol=$(python3 -c \"import config; print('https' if getattr(config, 'HTTPS_ENABLED', False) else 'http')\"); wget --no-verbose --tries=1 --spider $protocol://localhost:5001/"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 60s
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: nuclens
+      MYSQL_USER: root
+      MYSQL_PASSWORD: 123456
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
 
 volumes:
   mysql_data:
