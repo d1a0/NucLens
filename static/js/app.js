@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }),
         getScanSummary: (taskId) => api.request(`/scan/${taskId}/summary`),
         // User management
-        getUsers: (page = 1, perPage = 20, status = '') => api.request(`/admin/users?page=${page}&per_page=${perPage}&status=${status}`),
+        getUsers: (page = 1, perPage = 20, status = '', search = '') => api.request(`/admin/users?page=${page}&per_page=${perPage}&status=${status}&search=${encodeURIComponent(search)}`),
         approveUser: (userId) => api.request(`/admin/users/${userId}/approve`, { method: 'POST' }),
         rejectUser: (userId) => api.request(`/admin/users/${userId}/reject`, { method: 'POST' }),
         deleteUser: (userId) => api.request(`/admin/users/${userId}`, { method: 'DELETE' }),
@@ -1056,6 +1056,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Event Handlers: Users ---
     filterUsersBtn?.addEventListener('click', () => loadUsers(1));
+    
+    // 用户搜索框回车事件
+    document.getElementById('filter-user-search')?.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            loadUsers(1);
+        }
+    });
 
     addUserBtn?.addEventListener('click', () => {
         document.getElementById('new-user-username').value = '';
@@ -1240,7 +1247,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadUsers(page = 1) {
         try {
             const statusFilter = filterUserStatus?.value || '';
-            const result = await api.getUsers(page, state.usersPagination.perPage, statusFilter);
+            const searchFilter = document.getElementById('filter-user-search')?.value || '';
+            const result = await api.getUsers(page, state.usersPagination.perPage, statusFilter, searchFilter);
             state.users = result.users || [];
             state.usersPagination = {
                 ...state.usersPagination,
@@ -1855,21 +1863,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 复制规则内容到剪贴板
     window.copyRuleContent = function(btn) {
-        const content = decodeURIComponent(btn.dataset.content);
-        navigator.clipboard.writeText(content).then(() => {
-            showCopyToast();
-        }).catch(err => {
-            console.error('复制失败:', err);
-            // 降级方案
-            const textarea = document.createElement('textarea');
-            textarea.value = content;
-            document.body.appendChild(textarea);
-            textarea.select();
+        const content = btn.dataset.content ? decodeURIComponent(btn.dataset.content) : '';
+        if (!content) {
+            console.error('没有可复制的内容');
+            return;
+        }
+        
+        // 优先使用 clipboard API，降级使用 execCommand
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(content).then(() => {
+                showCopyToast();
+            }).catch(err => {
+                console.error('复制失败:', err);
+                fallbackCopy(content);
+            });
+        } else {
+            fallbackCopy(content);
+        }
+    }
+    
+    // 降级复制方案
+    function fallbackCopy(content) {
+        const textarea = document.createElement('textarea');
+        textarea.value = content;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        try {
             document.execCommand('copy');
-            document.body.removeChild(textarea);
             showCopyToast();
-        });
-    };
+        } catch (err) {
+            console.error('降级复制也失败:', err);
+        }
+        document.body.removeChild(textarea);
+    }
 
     function showCopyToast() {
         const toast = document.getElementById('copy-toast');

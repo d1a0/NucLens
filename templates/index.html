@@ -274,14 +274,15 @@
             </div>
             
             <div class="filter-bar">
-                <div class="filter-group">
+                <div class="filter-group" style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
                     <select id="filter-user-status">
                         <option value="">全部状态</option>
                         <option value="pending">待审核</option>
                         <option value="approved">已通过</option>
                         <option value="rejected">已拒绝</option>
                     </select>
-                    <button id="filter-users-btn" class="btn-secondary">筛选</button>
+                    <input type="text" id="filter-user-search" placeholder="搜索用户名..." style="padding: 6px 12px; border: 1px solid var(--border-color); border-radius: 4px; width: 200px;">
+                    <button id="filter-users-btn" class="btn-secondary">搜索</button>
                 </div>
             </div>
 

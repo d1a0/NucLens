@@ -512,9 +512,9 @@ def upload_yaml():
 
 
 @app.route('/api/yaml/upload-text', methods=['POST'])
-@jwt_required()
+@role_required(['admin', 'editor'])
 def upload_yaml_text():
-    """通过文本内容上传 YAML 规则"""
+    """通过文本内容上传 YAML 规则（仅管理员和编辑可用）"""
     data = request.get_json()
     content = data.get('content')
     
@@ -977,10 +977,11 @@ def get_rule_content(rule_id):
 @app.route('/api/admin/users', methods=['GET'])
 @role_required(['admin'])
 def get_users():
-    """获取用户列表（支持分页）"""
+    """获取用户列表（支持分页和搜索）"""
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     status_filter = request.args.get('status', '')
+    search_filter = request.args.get('search', '')  # 新增搜索参数
     
     # 限制每页最大数量
     per_page = min(per_page, 1000)
@@ -990,6 +991,10 @@ def get_users():
     # 状态筛选
     if status_filter:
         query = query.filter(User.status == status_filter)
+    
+    # 用户名模糊搜索
+    if search_filter:
+        query = query.filter(User.username.ilike(f'%{search_filter}%'))
     
     # 分页查询
     pagination = query.order_by(User.created_at.desc()).paginate(page=page, per_page=per_page, error_out=False)
