@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # 版本号
-__version__ = '2.0.6'
+__version__ = '2.0.7'
 
 import os
 import subprocess
@@ -1679,6 +1679,59 @@ def get_ssl_settings():
         "key_exists": key_exists,
         "cert_info": cert_info
     })
+
+
+@app.route('/api/settings/ssl/toggle', methods=['POST'])
+@role_required(['admin'])
+def toggle_https():
+    """切换 HTTPS 状态（仅管理员）"""
+    data = request.get_json() or {}
+    enabled = data.get('enabled', False)
+    
+    # 检查证书是否存在
+    cert_path = os.path.join(CERTS_FOLDER, 'cert.pem')
+    key_path = os.path.join(CERTS_FOLDER, 'key.pem')
+    
+    if enabled and (not os.path.exists(cert_path) or not os.path.exists(key_path)):
+        return jsonify({"msg": "请先上传或生成 SSL 证书"}), 400
+    
+    # 读取并修改 config.py
+    config_path = os.path.join(basedir, 'config.py')
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config_content = f.read()
+        
+        # 替换 HTTPS_ENABLED 的值
+        import re
+        new_value = 'True' if enabled else 'False'
+        
+        if 'HTTPS_ENABLED' in config_content:
+            config_content = re.sub(
+                r'HTTPS_ENABLED\s*=\s*(True|False)',
+                f'HTTPS_ENABLED = {new_value}',
+                config_content
+            )
+        else:
+            # 如果配置项不存在，添加到文件末尾
+            config_content += f'\n\n# HTTPS 配置\nHTTPS_ENABLED = {new_value}\n'
+        
+        with open(config_path, 'w', encoding='utf-8') as f:
+            f.write(config_content)
+        
+        # 重新加载配置模块
+        import importlib
+        import config
+        importlib.reload(config)
+        
+        status_text = '启用' if enabled else '关闭'
+        return jsonify({
+            "msg": f"HTTPS 已{status_text}，请重启服务使配置生效",
+            "https_enabled": enabled,
+            "need_restart": True
+        })
+        
+    except Exception as e:
+        return jsonify({"msg": f"修改配置失败: {str(e)}"}), 500
 
 
 @app.route('/api/settings/ssl/upload', methods=['POST'])

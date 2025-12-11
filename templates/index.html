@@ -369,13 +369,19 @@
                 <div class="settings-section">
                     <h3>HTTPS 证书管理</h3>
                     <p class="settings-description">
-                        配置 HTTPS 加密访问。上传证书后需要在 config.py 中设置 HTTPS_ENABLED = True 并重启服务。
+                        配置 HTTPS 加密访问。启用 HTTPS 后将关闭 HTTP 访问，仅支持 HTTPS。修改后需重启服务生效。
                     </p>
                     
                     <div class="settings-info">
                         <div class="info-row">
                             <label>HTTPS 状态：</label>
-                            <span id="https-status" class="status-badge">-</span>
+                            <div class="https-toggle">
+                                <select id="https-enabled-select">
+                                    <option value="false">关闭</option>
+                                    <option value="true">启用</option>
+                                </select>
+                                <button id="save-https-status-btn" class="btn-primary btn-small">保存</button>
+                            </div>
                         </div>
                         <div class="info-row">
                             <label>证书文件：</label>

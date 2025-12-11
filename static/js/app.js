@@ -2166,16 +2166,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const ssl = await api.request('/settings/ssl');
             
-            // HTTPS 状态
-            const httpsStatusEl = document.getElementById('https-status');
-            if (httpsStatusEl) {
-                if (ssl.https_enabled) {
-                    httpsStatusEl.textContent = '已启用';
-                    httpsStatusEl.className = 'status-badge available';
-                } else {
-                    httpsStatusEl.textContent = '未启用';
-                    httpsStatusEl.className = 'status-badge unavailable';
-                }
+            // HTTPS 状态下拉框
+            const httpsSelect = document.getElementById('https-enabled-select');
+            if (httpsSelect) {
+                httpsSelect.value = ssl.https_enabled ? 'true' : 'false';
             }
             
             // 证书状态
@@ -2208,6 +2202,32 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error('加载SSL设置失败:', error);
         }
+    }
+    
+    // 保存 HTTPS 状态
+    const saveHttpsBtn = document.getElementById('save-https-status-btn');
+    if (saveHttpsBtn) {
+        saveHttpsBtn.addEventListener('click', async () => {
+            const httpsSelect = document.getElementById('https-enabled-select');
+            const enabled = httpsSelect.value === 'true';
+            
+            saveHttpsBtn.disabled = true;
+            saveHttpsBtn.textContent = '保存中...';
+            
+            try {
+                const result = await api.request('/settings/ssl/toggle', {
+                    method: 'POST',
+                    body: JSON.stringify({ enabled: enabled })
+                });
+                showToast(result.msg, 'success');
+                loadSSLSettings();
+            } catch (error) {
+                showToast(error.msg || '保存失败', 'error');
+            } finally {
+                saveHttpsBtn.disabled = false;
+                saveHttpsBtn.textContent = '保存';
+            }
+        });
     }
     
     // 生成自签名证书
