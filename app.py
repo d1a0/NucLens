@@ -1323,6 +1323,7 @@ def batch_validate_rules():
     批量验证规则（使用 nuclei -validate）
     - Admin: 可以验证所有规则
     - Editor: 只能验证自己上传的规则
+    - 已验证/已发布的规则会跳过，不重复验证
     """
     data = request.get_json()
     rule_ids = data.get('rule_ids', [])
@@ -1335,6 +1336,7 @@ def batch_validate_rules():
     
     success = []
     failed = []
+    skipped = []  # 跳过已验证/已发布的规则
     
     for rule_id in rule_ids:
         rule = YamlRule.query.get(rule_id)
@@ -1347,9 +1349,9 @@ def batch_validate_rules():
             failed.append({"id": rule_id, "reason": "无权限验证此规则"})
             continue
         
-        # 只能验证 pending 或 failed 状态的规则
-        if rule.status not in ['pending', 'failed']:
-            failed.append({"id": rule_id, "reason": f"状态为 {rule.status}，无法验证"})
+        # 跳过已验证或已发布的规则（不需要重复验证）
+        if rule.status in ['verified', 'published']:
+            skipped.append({"id": rule_id, "name": rule.name, "reason": "已验证通过"})
             continue
         
         # 验证规则文件是否存在
@@ -1376,9 +1378,16 @@ def batch_validate_rules():
     
     db.session.commit()
     
+    msg_parts = [f"成功 {len(success)} 个"]
+    if skipped:
+        msg_parts.append(f"跳过 {len(skipped)} 个（已验证）")
+    if failed:
+        msg_parts.append(f"失败 {len(failed)} 个")
+    
     return jsonify({
-        "msg": f"批量验证完成：成功 {len(success)} 个，失败 {len(failed)} 个",
+        "msg": f"批量验证完成：{'，'.join(msg_parts)}",
         "success": success,
+        "skipped": skipped,
         "failed": failed
     })
 
