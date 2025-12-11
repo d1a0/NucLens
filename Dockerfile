@@ -14,7 +14,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # 强制覆盖 /etc/apt/sources.list 并验证国内源
 RUN echo "deb https://mirrors.aliyun.com/debian bullseye main" > /etc/apt/sources.list && \
     echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main" >> /etc/apt/sources.list && \
-    apt-get update && \
+    rm -rf /etc/apt/sources.list.d/* && \
+    apt-get update --allow-releaseinfo-change && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \
     unzip \
@@ -71,9 +72,9 @@ RUN chmod +x /entrypoint.sh
 # 暴露端口
 EXPOSE 5001
 
-# 健康检查支持 HTTP 和 HTTPS（基于 config.py 配置）
+# 健康检查支持 HTTP 和 HTTPS（修复 protocol 未设置警告）
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-    CMD protocol=$(python3 -c "import config; print('https' if config.HTTPS_ENABLED else 'http')") && \
+    CMD protocol=$(python3 -c "import config; print('https' if getattr(config, 'HTTPS_ENABLED', False) else 'http')") && \
     wget --no-verbose --tries=1 --spider $protocol://localhost:5001/ || exit 1
 
 # 启动命令
