@@ -1276,10 +1276,10 @@ def import_rules():
                         skipped.append(f"{name}: 规则 '{rule_id}' 状态不是 published，跳过")
                         continue
                     
-                    # 检查是否已存在 - 已存在则不覆盖，记为失败
+                    # 检查是否已存在 - 已存在则跳过，不覆盖
                     existing_rule = YamlRule.query.filter_by(name=rule_id).first()
                     if existing_rule:
-                        errors.append(f"{name}: 规则 '{rule_id}' 已存在")
+                        skipped.append(f"{name}: 规则 '{rule_id}' 已存在，跳过")
                         continue
                     
                     # 保存文件
