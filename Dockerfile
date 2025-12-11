@@ -1,5 +1,5 @@
-# 基于固定版本的 bullseye 镜像，避免网络问题
-FROM python:3.11-slim-bullseye
+# 基于国内加速的 Python 3.11 slim 镜像
+FROM docker.1ms.run/python:3.11-slim-bullseye
 
 # 设置工作目录
 WORKDIR /app
