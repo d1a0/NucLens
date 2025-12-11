@@ -11,8 +11,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
     DEBIAN_FRONTEND=noninteractive
 
-# 替换 apt-get 为国内源
-RUN sed -i 's@http://deb.debian.org@https://mirrors.aliyun.com@g' /etc/apt/sources.list && \
+# 确保 /etc/apt/sources.list 存在
+RUN [ ! -f /etc/apt/sources.list ] && echo "deb http://deb.debian.org/debian bullseye main" > /etc/apt/sources.list && \
+    echo "deb http://security.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list || true && \
+    sed -i 's@http://deb.debian.org@https://mirrors.aliyun.com@g' /etc/apt/sources.list && \
     sed -i 's@http://security.debian.org@https://mirrors.aliyun.com@g' /etc/apt/sources.list && \
     apt-get update && apt-get install -y --no-install-recommends \
     wget \
