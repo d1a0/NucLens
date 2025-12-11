@@ -1129,11 +1129,12 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadDashboardStats() {
         try {
             const rulesResult = await api.getRules('', 1, 1);
+            const publishedResult = await api.getRules('', 1, 1, 'published', '');
             const scansResult = await api.getScans(1, 1);
             
             statRules.textContent = rulesResult ? rulesResult.total : 0;
-            // 获取已发布规则数需要单独查询，这里用总数代替
-            statPublished.textContent = rulesResult ? rulesResult.total : 0;
+            // 单独查询已发布规则数量
+            statPublished.textContent = publishedResult ? publishedResult.total : 0;
             statScans.textContent = scansResult ? scansResult.total : 0;
 
             // 管理员显示待审核用户数

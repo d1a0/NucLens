@@ -583,7 +583,7 @@ def list_yaml_rules():
     per_page = request.args.get('per_page', 20, type=int)
     
     # 限制每页最大数量
-    per_page = min(per_page, 100)
+    per_page = min(per_page, 1000)
     
     current_user_identity = get_jwt_identity()
     user = User.query.filter_by(username=current_user_identity).first()
@@ -842,7 +842,7 @@ def get_scan_history():
     per_page = request.args.get('per_page', 20, type=int)
     
     # 限制每页最大数量
-    per_page = min(per_page, 100)
+    per_page = min(per_page, 1000)
     
     current_user = get_jwt_identity()
     # 如果是 admin，可以查看所有任务
@@ -983,7 +983,7 @@ def get_users():
     status_filter = request.args.get('status', '')
     
     # 限制每页最大数量
-    per_page = min(per_page, 100)
+    per_page = min(per_page, 1000)
     
     query = User.query
     

@@ -17,11 +17,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# 下载并安装 Nuclei (Linux 版本，使用 gh-proxy 加速)
+# 下载并安装 Nuclei (自动检测架构，使用 gh-proxy 加速)
 ARG NUCLEI_VERSION=3.3.7
-RUN wget -q https://gh-proxy.org/https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_linux_amd64.zip \
-    && unzip nuclei_${NUCLEI_VERSION}_linux_amd64.zip -d /usr/local/bin/ \
-    && rm nuclei_${NUCLEI_VERSION}_linux_amd64.zip \
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then \
+        NUCLEI_ARCH="linux_amd64"; \
+    elif [ "$ARCH" = "arm64" ]; then \
+        NUCLEI_ARCH="linux_arm64"; \
+    elif [ "$ARCH" = "armhf" ]; then \
+        NUCLEI_ARCH="linux_armv6"; \
+    else \
+        echo "Unsupported architecture: $ARCH" && exit 1; \
+    fi && \
+    wget -q https://gh-proxy.org/https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_${NUCLEI_ARCH}.zip \
+    && unzip nuclei_${NUCLEI_VERSION}_${NUCLEI_ARCH}.zip -d /usr/local/bin/ \
+    && rm nuclei_${NUCLEI_VERSION}_${NUCLEI_ARCH}.zip \
     && chmod +x /usr/local/bin/nuclei
 
 # 复制依赖文件并安装（使用清华源加速）
