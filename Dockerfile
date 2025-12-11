@@ -1,5 +1,5 @@
-# 基于 Python 3.11 slim 镜像（使用国内镜像源加速）
-FROM docker.1ms.run/python:3.11-slim
+# 基于 Python 3.11 slim-bullseye 镜像（确保与 bullseye 源一致）
+FROM python:3.11-slim-bullseye
 
 # 设置工作目录
 WORKDIR /app
