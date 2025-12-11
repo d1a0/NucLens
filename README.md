@@ -38,23 +38,21 @@ cd NucLens
 docker-compose up -d
 ```
 
-> ℹ️ Docker 镜像已内置 MySQL，通过 `config.py` 配置数据库连接
+> ✅ **开箱即用**：Docker 镜像已内置 MySQL 数据库，无需额外配置，启动即可使用。
 
-**修改配置**：编辑 `config.py` 文件
+**可选配置**：如需自定义，编辑 `config.py` 文件
 
 ```python
-# 数据库配置
-MYSQL_HOST = 'localhost'      # MySQL 主机地址
-MYSQL_PORT = 3306             # MySQL 端口
-MYSQL_USER = 'root'           # 数据库用户名
-MYSQL_PASSWORD = '123456'     # 数据库密码（请修改）
-MYSQL_DATABASE = 'nuclens'    # 数据库名
-
-# JWT 密钥（留空则自动生成）
-JWT_SECRET_KEY = ''
+# JWT 密钥（留空则自动生成，重启后 token 失效）
+JWT_SECRET_KEY = 'your-secret-key'
 
 # 应用端口
 APP_PORT = 5001
+
+# HTTPS 配置（可选）
+HTTPS_ENABLED = False
+SSL_CERT_PATH = 'certs/cert.pem'
+SSL_KEY_PATH = 'certs/key.pem'
 ```
 
 ### 方式二：Docker
@@ -86,13 +84,15 @@ cd NucLens
 # 安装依赖
 pip install -r requirements.txt
 
-# 下载 Nuclei 放入 bin/ 目录
-# https://github.com/projectdiscovery/nuclei/releases
-
 # 安装并启动 MySQL（需手动安装）
 # 创建数据库：CREATE DATABASE nuclens CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 # 修改 config.py 配置数据库连接
+vim config.py
+
+# 下载 Nuclei 放入 bin/ 目录（可选，也可在系统设置中上传）
+# https://github.com/projectdiscovery/nuclei/releases
+
 # 启动
 python app.py
 ```
