@@ -11,11 +11,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
     DEBIAN_FRONTEND=noninteractive
 
-# 确保 /etc/apt/sources.list 存在
-RUN [ ! -f /etc/apt/sources.list ] && echo "deb http://deb.debian.org/debian bullseye main" > /etc/apt/sources.list && \
-    echo "deb http://security.debian.org/debian-security bullseye-security main" >> /etc/apt/sources.list || true && \
-    sed -i 's@http://deb.debian.org@https://mirrors.aliyun.com@g' /etc/apt/sources.list && \
-    sed -i 's@http://security.debian.org@https://mirrors.aliyun.com@g' /etc/apt/sources.list && \
+# 强制覆盖 /etc/apt/sources.list 并验证国内源
+RUN echo "deb https://mirrors.aliyun.com/debian bullseye main" > /etc/apt/sources.list && \
+    echo "deb https://mirrors.aliyun.com/debian-security bullseye-security main" >> /etc/apt/sources.list && \
     apt-get update && apt-get install -y --no-install-recommends \
     wget \
     unzip \
@@ -23,21 +21,24 @@ RUN [ ! -f /etc/apt/sources.list ] && echo "deb http://deb.debian.org/debian bul
     gnupg \
     lsb-release \
     default-mysql-server \
-    default-mysql-client \
-    && rm -rf /var/lib/apt/lists/*
+    default-mysql-client && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    echo "验证国内源是否生效：" && grep -E "mirrors.aliyun.com" /etc/apt/sources.list
 
-# 下载并安装 Nuclei (自动检测架构，使用 gh-proxy 加速)
-ARG NUCLEI_VERSION=3.3.7
+# 使用最新版本，或根据需要固定为 3.6.0
+ARG NUCLEI_VERSION=3.6.0
 RUN ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then \
         NUCLEI_ARCH="linux_amd64"; \
     elif [ "$ARCH" = "arm64" ]; then \
         NUCLEI_ARCH="linux_arm64"; \
     elif [ "$ARCH" = "armhf" ]; then \
-        NUCLEI_ARCH="linux_armv6"; \
+        # 注意：3.6.0版本中 arm 架构命名为 `linux_arm.zip`
+        NUCLEI_ARCH="linux_arm"; \
     else \
         echo "Unsupported architecture: $ARCH" && exit 1; \
     fi && \
+    # 使用加速镜像下载
     wget -q https://gh-proxy.org/https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}/nuclei_${NUCLEI_VERSION}_${NUCLEI_ARCH}.zip \
     && unzip nuclei_${NUCLEI_VERSION}_${NUCLEI_ARCH}.zip -d /usr/local/bin/ \
     && rm nuclei_${NUCLEI_VERSION}_${NUCLEI_ARCH}.zip \
