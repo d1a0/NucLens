@@ -28,7 +28,7 @@ DEBUG_MODE = False
 
 # ============ HTTPS 配置 ============
 # 是否启用 HTTPS
-HTTPS_ENABLED = True
+HTTPS_ENABLED = False
 # SSL 证书路径（相对于项目根目录或绝对路径）
 SSL_CERT_PATH = 'certs/cert.pem'
 # SSL 私钥路径
