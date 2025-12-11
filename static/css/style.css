@@ -1827,6 +1827,7 @@ table td {
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-wrap: nowrap;
 }
 
 .https-toggle select {
@@ -1836,7 +1837,7 @@ table td {
     font-size: 0.9rem;
     background: #fff;
     cursor: pointer;
-    min-width: 150px;
+    min-width: 140px;
 }
 
 .https-toggle select:focus {
@@ -1846,10 +1847,24 @@ table td {
 }
 
 .https-toggle .save-hint {
-    font-size: 0.85rem;
-    padding: 4px 8px;
+    font-size: 0.8rem;
+    white-space: nowrap;
+    color: #27ae60;
+}
+
+.https-toggle .btn-warning {
+    background: #f39c12;
+    color: #fff;
+    border: none;
+    padding: 6px 12px;
     border-radius: 4px;
-    background: #f0f9f0;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.https-toggle .btn-warning:hover {
+    background: #e67e22;
 }
 
 /* Status badges for settings */

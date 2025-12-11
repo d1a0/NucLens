@@ -2188,7 +2188,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         // 显示保存提示
                         if (hintEl) {
                             hintEl.style.display = 'inline';
-                            hintEl.textContent = '已保存，重启生效';
+                            hintEl.textContent = '✓ 已保存';
                             hintEl.style.color = '#27ae60';
                         }
                     } catch (error) {
@@ -2198,7 +2198,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         
                         if (hintEl) {
                             hintEl.style.display = 'inline';
-                            hintEl.textContent = error.msg || '保存失败';
+                            hintEl.textContent = '✗ 保存失败';
                             hintEl.style.color = '#e74c3c';
                         }
                     } finally {
@@ -2277,6 +2277,32 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadSSLSettings();
             } catch (error) {
                 showToast(error.msg || '删除失败', 'error');
+            }
+        });
+    }
+    
+    // 重启服务按钮
+    const restartServiceBtn = document.getElementById('restart-service-btn');
+    if (restartServiceBtn) {
+        restartServiceBtn.addEventListener('click', async () => {
+            if (!confirm('确定要重启服务吗？这将导致短暂的服务中断。')) return;
+            
+            restartServiceBtn.disabled = true;
+            restartServiceBtn.textContent = '重启中...';
+            
+            try {
+                const result = await api.request('/settings/restart', { method: 'POST' });
+                
+                showToast(result.msg + '，请自行重启', 'info');
+            } catch (error) {
+                // 如果请求失败，可能是服务已经在重启
+                showToast('服务可能正在重启，请稍后刷新页面', 'info');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 5000);
+            } finally {
+                restartServiceBtn.disabled = false;
+                restartServiceBtn.textContent = '重启服务';
             }
         });
     }

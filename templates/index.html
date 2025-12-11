@@ -369,7 +369,7 @@
                 <div class="settings-section">
                     <h3>HTTPS 证书管理</h3>
                     <p class="settings-description">
-                        配置 HTTPS 加密访问。启用 HTTPS 后将关闭 HTTP 访问，仅支持 HTTPS。修改后需重启服务生效。
+                        配置 HTTPS 加密访问。启用 HTTPS 后将关闭 HTTP 访问，仅支持 HTTPS。
                     </p>
                     
                     <div class="settings-info">
@@ -380,7 +380,8 @@
                                     <option value="false">关闭 (HTTP)</option>
                                     <option value="true">启用 (HTTPS)</option>
                                 </select>
-                                <span id="https-save-hint" class="save-hint" style="display: none;">已保存，重启生效</span>
+                                <span id="https-save-hint" class="save-hint"></span>
+                                <button id="restart-service-btn" class="btn-warning btn-small">重启生效</button>
                             </div>
                         </div>
                         <div class="info-row">

@@ -1889,6 +1889,28 @@ def delete_ssl_certificate():
         return jsonify({"msg": "没有找到证书文件"})
 
 
+@app.route('/api/settings/restart', methods=['POST'])
+@role_required(['admin'])
+def restart_service():
+    """重启服务提示（仅管理员）"""
+    # 检测运行环境
+    in_docker = os.path.exists('/.dockerenv')
+    
+    if in_docker:
+        return jsonify({
+            "msg": "请在宿主机执行命令重启容器",
+            "success": False,
+            "command": "docker restart nuclens"
+        })
+    else:
+        # 本地开发环境：提示用户手动重启
+        return jsonify({
+            "msg": "请手动重启服务（Ctrl+C 后重新运行 python app.py）",
+            "success": False,
+            "command": "python app.py"
+        })
+
+
 if __name__ == '__main__':
     import ipaddress  # 用于生成自签名证书
     
