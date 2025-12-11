@@ -11,9 +11,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
     DEBIAN_FRONTEND=noninteractive
 
-# 锁定 Debian 版本为 bookworm 并安装 mariadb
-RUN echo "deb https://mirrors.aliyun.com/debian bookworm main" > /etc/apt/sources.list && \
-    echo "deb https://mirrors.aliyun.com/debian-security bookworm-security main" >> /etc/apt/sources.list && \
+# 锁定 Debian 版本为 bookworm 2024-05-20 快照并安装 mariadb
+RUN echo "deb https://snapshot.debian.org/archive/debian/20240520T000000Z bookworm main" > /etc/apt/sources.list && \
+    echo "deb https://snapshot.debian.org/archive/debian-security/20240520T000000Z bookworm-security main" >> /etc/apt/sources.list && \
     rm -rf /etc/apt/sources.list.d/* && \
     apt-get update --allow-releaseinfo-change && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -27,7 +27,7 @@ RUN echo "deb https://mirrors.aliyun.com/debian bookworm main" > /etc/apt/source
     mariadb-server \
     mariadb-client && \
     apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    echo "验证国内源是否生效：" && grep -E "mirrors.aliyun.com" /etc/apt/sources.list
+    echo "验证快照源是否生效：" && grep -E "snapshot.debian.org" /etc/apt/sources.list
 
 # 使用最新版本，或根据需要固定为 3.6.0
 ARG NUCLEI_VERSION=3.6.0
