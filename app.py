@@ -104,8 +104,8 @@ rule_tags = db.Table('rule_tags',
 class YamlRule(db.Model):
     """YAML 规则模型"""
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(255), nullable=False, unique=True)
-    file_path = db.Column(db.String(255), nullable=False)
+    name = db.Column(db.String(191), nullable=False, unique=True)  # 191 for MySQL utf8mb4 index limit
+    file_path = db.Column(db.String(500), nullable=False)
     uploaded_by = db.Column(db.String(80), nullable=False)
     uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
     # 状态: pending (待验证), verified (已验证), published (已公开), failed (验证失败)
@@ -1167,7 +1167,7 @@ def export_rules():
     if not rules:
         return jsonify({"msg": "没有可导出的规则"}), 404
     
-    # 构建元数据（标签信息）
+    # 构建元数据（标签和状态信息）
     rules_meta = {}
     
     # 创建内存中的 ZIP 文件
@@ -1179,13 +1179,12 @@ def export_rules():
                 filename = f"{rule.name}.yaml"
                 zf.write(rule.file_path, filename)
                 
-                # 保存标签信息到元数据
+                # 保存状态和标签信息到元数据
                 tags = [tag.name for tag in rule.tags]
-                if tags:
-                    rules_meta[rule.name] = {
-                        "tags": tags,
-                        "status": rule.status
-                    }
+                rules_meta[rule.name] = {
+                    "tags": tags,
+                    "status": rule.status
+                }
         
         # 将元数据写入 JSON 文件
         if rules_meta:
@@ -1213,6 +1212,7 @@ def import_rules():
     批量导入规则（ZIP 压缩包）
     - Admin 和 Editor 可以导入
     - 如果压缩包包含 rules_meta.json，会自动应用标签
+    - 只导入状态为 published 的规则，导入后需要重新验证
     """
     if 'file' not in request.files:
         return jsonify({"msg": "没有上传文件"}), 400
@@ -1224,6 +1224,7 @@ def import_rules():
     current_user = get_jwt_identity()
     
     imported = []
+    updated = []
     skipped = []
     errors = []
     rules_meta = {}  # 元数据（标签信息）
@@ -1257,44 +1258,64 @@ def import_rules():
                         errors.append(f"{name}: 缺少 'id' 字段")
                         continue
                     
-                    # 检查是否已存在
-                    if YamlRule.query.filter_by(name=rule_id).first():
-                        skipped.append(f"{name}: 规则 '{rule_id}' 已存在")
+                    # 检查元数据中的状态，只导入 published 状态的规则
+                    meta_status = rules_meta.get(rule_id, {}).get('status', '')
+                    if rules_meta and meta_status != 'published':
+                        skipped.append(f"{name}: 规则 '{rule_id}' 状态不是 published，跳过")
                         continue
+                    
+                    # 检查是否已存在
+                    existing_rule = YamlRule.query.filter_by(name=rule_id).first()
                     
                     # 保存文件
                     filename = f"{rule_id}.yaml"
                     filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
                     
-                    if os.path.exists(filepath):
-                        skipped.append(f"{name}: 文件 '{filename}' 已存在")
-                        continue
-                    
                     with open(filepath, 'w', encoding='utf-8') as f:
                         f.write(content)
                     
-                    # 创建数据库记录
-                    new_rule = YamlRule(
-                        name=rule_id,
-                        file_path=filepath,
-                        uploaded_by=current_user,
-                        status='pending'
-                    )
-                    db.session.add(new_rule)
-                    db.session.flush()  # 获取 ID 以便添加标签
-                    
-                    # 应用标签（如果元数据中有）
-                    if rule_id in rules_meta and 'tags' in rules_meta[rule_id]:
-                        for tag_name in rules_meta[rule_id]['tags']:
-                            tag = Tag.query.filter_by(name=tag_name).first()
-                            if not tag:
-                                tag = Tag(name=tag_name)
-                                db.session.add(tag)
-                                db.session.flush()
-                            if tag not in new_rule.tags:
-                                new_rule.tags.append(tag)
-                    
-                    imported.append(rule_id)
+                    if existing_rule:
+                        # 更新已存在的规则，状态改为 pending 需要重新验证
+                        existing_rule.status = 'pending'
+                        existing_rule.uploaded_at = datetime.utcnow()
+                        
+                        # 更新标签
+                        if rule_id in rules_meta and 'tags' in rules_meta[rule_id]:
+                            # 清除旧标签
+                            existing_rule.tags.clear()
+                            for tag_name in rules_meta[rule_id]['tags']:
+                                tag = Tag.query.filter_by(name=tag_name).first()
+                                if not tag:
+                                    tag = Tag(name=tag_name)
+                                    db.session.add(tag)
+                                    db.session.flush()
+                                if tag not in existing_rule.tags:
+                                    existing_rule.tags.append(tag)
+                        
+                        updated.append(rule_id)
+                    else:
+                        # 创建新规则
+                        new_rule = YamlRule(
+                            name=rule_id,
+                            file_path=filepath,
+                            uploaded_by=current_user,
+                            status='pending'
+                        )
+                        db.session.add(new_rule)
+                        db.session.flush()  # 获取 ID 以便添加标签
+                        
+                        # 应用标签（如果元数据中有）
+                        if rule_id in rules_meta and 'tags' in rules_meta[rule_id]:
+                            for tag_name in rules_meta[rule_id]['tags']:
+                                tag = Tag.query.filter_by(name=tag_name).first()
+                                if not tag:
+                                    tag = Tag(name=tag_name)
+                                    db.session.add(tag)
+                                    db.session.flush()
+                                if tag not in new_rule.tags:
+                                    new_rule.tags.append(tag)
+                        
+                        imported.append(rule_id)
                     
                 except Exception as e:
                     errors.append(f"{name}: {str(e)}")
@@ -1305,8 +1326,9 @@ def import_rules():
         return jsonify({"msg": "无效的 ZIP 文件"}), 400
     
     return jsonify({
-        "msg": f"导入完成：成功 {len(imported)} 个，跳过 {len(skipped)} 个，失败 {len(errors)} 个",
+        "msg": f"导入完成：新增 {len(imported)} 个，更新 {len(updated)} 个，跳过 {len(skipped)} 个，失败 {len(errors)} 个",
         "imported": imported,
+        "updated": updated,
         "skipped": skipped,
         "errors": errors
     })
