@@ -820,6 +820,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         totalFailed += result.failed.length;
                         allFailed = allFailed.concat(result.failed);
                     }
+                    
+                    // 每批完成后刷新规则列表，实时更新状态
+                    await loadRules();
                 } catch (error) {
                     console.error(`批次 ${i + 1} 验证失败:`, error);
                     totalFailed += batchIds.length;
