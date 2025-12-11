@@ -33,6 +33,9 @@ nuclei_rules/
 # 扫描结果
 scan_results/*.json
 
+# SSL 证书文件（敏感数据）
+certs/
+
 # 环境变量文件
 .env
 .env.local
