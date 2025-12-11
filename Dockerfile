@@ -1,5 +1,5 @@
-# 基于 Python 3.11 slim 镜像（使用国内镜像源加速）
-FROM docker.1ms.run/python:3.11-slim
+# 基于固定版本的 bullseye 镜像，避免网络问题
+FROM python:3.11-slim-bullseye
 
 # 设置工作目录
 WORKDIR /app
@@ -11,11 +11,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     FLASK_ENV=production \
     DEBIAN_FRONTEND=noninteractive
 
-# 锁定 Debian 版本为 bookworm 2024-05-20 快照并安装 mariadb
-RUN echo "deb https://snapshot.debian.org/archive/debian/20240520T000000Z bookworm main" > /etc/apt/sources.list && \
-    echo "deb https://snapshot.debian.org/archive/debian-security/20240520T000000Z bookworm-security main" >> /etc/apt/sources.list && \
-    rm -rf /etc/apt/sources.list.d/* && \
-    apt-get update --allow-releaseinfo-change && \
+# 安装必要依赖和 MariaDB
+RUN apt-get update --allow-releaseinfo-change && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     wget \
     unzip \
@@ -26,8 +23,7 @@ RUN echo "deb https://snapshot.debian.org/archive/debian/20240520T000000Z bookwo
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     mariadb-server \
     mariadb-client && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
-    echo "验证快照源是否生效：" && grep -E "snapshot.debian.org" /etc/apt/sources.list
+    apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 使用最新版本，或根据需要固定为 3.6.0
 ARG NUCLEI_VERSION=3.6.0
