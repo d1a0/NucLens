@@ -13,7 +13,7 @@ import tempfile
 import secrets
 import ipaddress
 from datetime import datetime
-from flask import Flask, request, jsonify, send_from_directory, render_template, send_file
+from flask import Flask, request, jsonify, send_from_directory, render_template, send_file, abort
 from flask_sqlalchemy import SQLAlchemy
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity, JWTManager, verify_jwt_in_request
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -717,7 +717,9 @@ def update_yaml_rule(rule_id):
     - Admin: 可以为任何规则更新 status 和 tags.
     - Editor: 只能为自己上传的 'pending' 状态的规则更新 tags.
     """
-    rule = YamlRule.query.get_or_404(rule_id)
+    rule = db.session.get(YamlRule, rule_id)
+    if not rule:
+        abort(404)
     data = request.get_json()
     
     current_user_identity = get_jwt_identity()
@@ -770,7 +772,9 @@ def update_yaml_rule(rule_id):
 @role_required(['admin', 'editor'])
 def validate_yaml_rule(rule_id):
     """(Admin & Editor) 验证规则, 成功则状态变为 'verified', 失败则为 'failed'"""
-    rule = YamlRule.query.get_or_404(rule_id)
+    rule = db.session.get(YamlRule, rule_id)
+    if not rule:
+        abort(404)
     current_user_identity = get_jwt_identity()
     user = User.query.filter_by(username=current_user_identity).first()
 
@@ -1389,7 +1393,7 @@ def batch_validate_rules():
     # 收集要验证的规则
     rules_to_validate = []
     for rule_id in rule_ids:
-        rule = YamlRule.query.get(rule_id)
+        rule = db.session.get(YamlRule, rule_id)
         if not rule:
             failed.append({"id": rule_id, "reason": "规则不存在"})
             continue
@@ -1499,7 +1503,7 @@ def batch_publish_rules():
     failed = []
     
     for rule_id in rule_ids:
-        rule = YamlRule.query.get(rule_id)
+        rule = db.session.get(YamlRule, rule_id)
         if not rule:
             failed.append({"id": rule_id, "reason": "规则不存在"})
             continue
@@ -1536,7 +1540,7 @@ def batch_delete_rules():
     failed = []
     
     for rule_id in rule_ids:
-        rule = YamlRule.query.get(rule_id)
+        rule = db.session.get(YamlRule, rule_id)
         if not rule:
             failed.append({"id": rule_id, "reason": "规则不存在"})
             continue
