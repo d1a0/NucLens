@@ -5,13 +5,13 @@ NucLens 配置文件
 """
 
 # ============ 版本信息 ============
-VERSION = '2.1.5'
+VERSION = '2.1.6'
 
 # ============ 数据库配置 ============
 # MySQL 连接配置
 MYSQL_HOST = 'mysql'          # 数据库主机地址（容器名）
 MYSQL_PORT = 3306             # 数据库端口
-MYSQL_USER = 'root'           # 数据库用户名
+MYSQL_USER = 'nuclensuser'     # 数据库用户名
 MYSQL_PASSWORD = '123456'     # 数据库密码
 MYSQL_DATABASE = 'nuclens'    # 数据库名称
 

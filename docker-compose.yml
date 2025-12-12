@@ -30,7 +30,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_DATABASE: nuclens
-      MYSQL_USER: root
+      MYSQL_USER: nuclensuser
       MYSQL_PASSWORD: 123456
     ports:
       - "3306:3306"
