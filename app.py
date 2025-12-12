@@ -1371,6 +1371,7 @@ def batch_validate_rules():
     - Admin: 可以验证所有规则
     - Editor: 只能验证自己上传的规则
     - 已验证/已发布的规则会跳过，不重复验证
+    使用临时文件夹批量验证以提升效率
     """
     data = request.get_json()
     rule_ids = data.get('rule_ids', [])
@@ -1385,6 +1386,8 @@ def batch_validate_rules():
     failed = []
     skipped = []  # 跳过已验证/已发布的规则
     
+    # 收集要验证的规则
+    rules_to_validate = []
     for rule_id in rule_ids:
         rule = YamlRule.query.get(rule_id)
         if not rule:
@@ -1407,21 +1410,59 @@ def batch_validate_rules():
             failed.append({"id": rule_id, "reason": "规则文件不存在"})
             continue
         
-        # 使用 nuclei 进行验证
-        nuclei_path = get_nuclei_path()
-        command = [nuclei_path, '-t', rule.file_path, '-validate']
-        try:
-            result = subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
-            rule.status = 'verified'
-            success.append(rule_id)
-        except FileNotFoundError:
-            failed.append({"id": rule_id, "reason": "nuclei 命令未找到"})
-        except subprocess.CalledProcessError as e:
-            rule.status = 'failed'
-            failed.append({"id": rule_id, "reason": e.stderr.strip() if e.stderr else "验证失败"})
-        except Exception as e:
-            rule.status = 'failed'
-            failed.append({"id": rule_id, "reason": str(e)})
+        rules_to_validate.append(rule)
+    
+    # 如果有规则需要验证，使用临时文件夹批量验证
+    if rules_to_validate:
+        import tempfile
+        import shutil
+        
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # 复制规则文件到临时目录
+            for rule in rules_to_validate:
+                shutil.copy2(rule.file_path, tmp_dir)
+            
+            # 使用 nuclei 批量验证临时目录
+            nuclei_path = get_nuclei_path()
+            command = [nuclei_path, '-t', tmp_dir, '-validate']
+            try:
+                result = subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
+                # 如果批量验证成功，所有规则设为 verified
+                for rule in rules_to_validate:
+                    rule.status = 'verified'
+                    success.append(rule.id)
+            except FileNotFoundError:
+                for rule in rules_to_validate:
+                    failed.append({"id": rule.id, "reason": "nuclei 命令未找到"})
+            except subprocess.CalledProcessError as e:
+                # 批量验证失败，解析 stderr 找出失败的规则
+                error_output = e.stderr.strip()
+                # 简单处理：如果有具体文件错误，标记对应规则；否则所有失败
+                failed_files = []
+                for line in error_output.split('\n'):
+                    if '.yaml' in line or '.yml' in line:
+                        # 尝试提取文件名
+                        for rule in rules_to_validate:
+                            filename = os.path.basename(rule.file_path)
+                            if filename in line:
+                                failed_files.append(rule)
+                                break
+                
+                if failed_files:
+                    for rule in failed_files:
+                        rule.status = 'failed'
+                        failed.append({"id": rule.id, "reason": f"验证失败: {error_output[:100]}..."})
+                        rules_to_validate.remove(rule)
+                
+                # 剩余规则如果没有特定错误，也设为失败（保守处理）
+                for rule in rules_to_validate:
+                    if rule not in failed_files:
+                        rule.status = 'failed'
+                        failed.append({"id": rule.id, "reason": f"批量验证失败: {error_output[:100]}..."})
+            except Exception as e:
+                for rule in rules_to_validate:
+                    rule.status = 'failed'
+                    failed.append({"id": rule.id, "reason": str(e)})
     
     db.session.commit()
     
