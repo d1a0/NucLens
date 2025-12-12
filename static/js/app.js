@@ -1094,20 +1094,16 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await api.submitScan(targetUrl, tags);
             showToast('扫描任务已成功提交！', 'success');
-            scanTargetUrlInput.value = '';  // 只清空 URL，保留标签
-            selectedScanTagsContainer.innerHTML = ''; // 清空已选标签
-            renderAvailableTags(''); // 重新渲染待选标签
+            scanTargetUrlInput.value = '';
+            // 重置标签选择
+            selectedScanTagsContainer.innerHTML = '';
+            renderAvailableTags('');
             loadScans();
         } catch (error) {
             console.error('扫描提交错误:', error);
         }
     });
 
-    // 渲染扫描详情中的标签高亮
-    function renderScanDetails(tags) {
-        const detailsContainer = document.getElementById('scan-details-container');
-        detailsContainer.innerHTML = tags.map(tag => `<span class='highlight-tag'>${tag}</span>`).join(', ');
-    }
     // --- Event Handlers: Users ---
     filterUsersBtn?.addEventListener('click', () => loadUsers(1));
     
@@ -1964,13 +1960,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function showScanDetails(scanId) {
         try {
             const summary = await api.getScanSummary(scanId);
-            const tags = Array.isArray(summary.tags) ? summary.tags.join(', ') : (summary.tags || '-');
+            const tags = Array.isArray(summary.tags) ? summary.tags : (summary.tags ? summary.tags.split(',') : []);
+            const tagsHtml = tags.length > 0 ? tags.map(tag => `<span class="tag-item" style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px; font-size: 0.8rem;">${tag}</span>`).join('') : '-';
 
             let html = `
                 <div style="margin-bottom: 1rem;">
                     <p><strong>目标:</strong> ${summary.target_url || '-'}</p>
                     <p><strong>状态:</strong> <span class="status status-${summary.status}">${summary.status}</span></p>
-                    <p><strong>标签:</strong> ${tags}</p>
+                    <p><strong>标签:</strong> ${tagsHtml}</p>
                 </div>
             `;
 
