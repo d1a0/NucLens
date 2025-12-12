@@ -1095,6 +1095,8 @@ document.addEventListener('DOMContentLoaded', () => {
             await api.submitScan(targetUrl, tags);
             showToast('扫描任务已成功提交！', 'success');
             scanTargetUrlInput.value = '';  // 只清空 URL，保留标签
+            selectedScanTagsContainer.innerHTML = ''; // 清空已选标签
+            renderAvailableTags(''); // 重新渲染待选标签
             loadScans();
         } catch (error) {
             console.error('扫描提交错误:', error);
