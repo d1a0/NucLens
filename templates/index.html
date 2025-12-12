@@ -239,12 +239,7 @@
                             <span class="hint-text">可用标签将在此显示</span>
                         </div>
                     </div>
-                    <button id="submit-scan-btn" class="btn-primary" style="display: inline-block; width: 100px;">
-                        开始扫描
-                    </button>
-                    <button id="scan-details-btn" class="btn-secondary" style="display: inline-block; width: 100px;">
-                        详情
-                    </button>
+                    <button id="submit-scan-btn" class="btn-primary">开始扫描</button>
                 </div>
             </div>
 
@@ -253,17 +248,17 @@
             </div>
             
             <div class="table-container">
-                <table id="scans-table">
+                <table id="scans-table" class="scans-table">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>目标 URL</th>
-                            <th>标签</th>
-                            <th>状态</th>
-                            <th>发起人</th>
-                            <th>创建时间</th>
-                            <th>命中数</th>
-                            <th>操作</th>
+                            <th class="col-id">ID</th>
+                            <th class="col-url">目标 URL</th>
+                            <th class="col-tags">标签</th>
+                            <th class="col-status">状态</th>
+                            <th class="col-user">发起人</th>
+                            <th class="col-time">创建时间</th>
+                            <th class="col-hits">命中数</th>
+                            <th class="col-actions">操作</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -341,7 +336,8 @@
                     </div>
                     
                     <div class="settings-actions">
-                        <button id="test-nuclei-btn" class="btn-secondary">测试 Nuclei</button>
+                        <button id="test-nuclei-btn" class="btn-primary">测试 Nuclei</button>
+                        <button id="update-nuclei-btn" class="btn-primary">更新 Nuclei</button>
                         <button id="reset-nuclei-btn" class="btn-secondary">重置为默认</button>
                     </div>
                 </div>
