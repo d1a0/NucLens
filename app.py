@@ -1431,6 +1431,9 @@ def batch_validate_rules():
             command = [nuclei_path, '-t', tmp_dir, '-validate']
             try:
                 result = subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
+                print(f"[DEBUG] Nuclei validate success - Command: {' '.join(command)}")
+                print(f"[DEBUG] Nuclei validate stdout: {result.stdout}")
+                print(f"[DEBUG] Nuclei validate stderr: {result.stderr}")
                 # 如果批量验证成功，所有规则设为 verified
                 for rule in rules_to_validate:
                     rule.status = 'verified'
@@ -1439,6 +1442,10 @@ def batch_validate_rules():
                 for rule in rules_to_validate:
                     failed.append({"id": rule.id, "reason": "nuclei 命令未找到"})
             except subprocess.CalledProcessError as e:
+                print(f"[DEBUG] Nuclei validate failed - Command: {' '.join(command)}")
+                print(f"[DEBUG] Nuclei validate return code: {e.returncode}")
+                print(f"[DEBUG] Nuclei validate stdout: {e.stdout}")
+                print(f"[DEBUG] Nuclei validate stderr: {e.stderr}")
                 # 批量验证失败，解析 stderr 找出失败的规则
                 error_output = e.stderr.strip()
                 failed_rules = []
