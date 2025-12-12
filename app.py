@@ -19,6 +19,7 @@ from flask_jwt_extended import create_access_token, create_refresh_token, jwt_re
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
 import yaml
+import platform
 
 # App initialization
 app = Flask(__name__)
@@ -27,7 +28,10 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 datadir = os.path.join(basedir, 'data')
 os.makedirs(datadir, exist_ok=True)
 # 默认 Nuclei 可执行文件路径（会被系统设置覆盖）
-DEFAULT_NUCLEI_PATH = os.path.join(basedir, 'bin', 'nuclei.exe')
+if platform.system() == 'Windows':
+    DEFAULT_NUCLEI_PATH = os.path.join(basedir, 'bin', 'nuclei.exe')
+else:
+    DEFAULT_NUCLEI_PATH = os.path.join(basedir, 'bin', 'nuclei')
 # Nuclei 二进制文件上传目录
 NUCLEI_BIN_FOLDER = os.path.join(basedir, 'bin')
 
@@ -48,6 +52,12 @@ except ImportError:
     MYSQL_PASSWORD = '123456'
     MYSQL_DATABASE = 'nuclens'
     JWT_SECRET = ''
+
+# 动态设置 MySQL 主机地址
+if os.path.exists('/.dockerenv'):
+    MYSQL_HOST = 'mysql'  # Docker 容器内使用容器名
+else:
+    MYSQL_HOST = 'localhost'  # 本地运行使用 localhost
 
 # MySQL 数据库配置
 app.config['SQLALCHEMY_DATABASE_URI'] = f'mysql+pymysql://{MYSQL_USER}:{MYSQL_PASSWORD}@{MYSQL_HOST}:{MYSQL_PORT}/{MYSQL_DATABASE}?charset=utf8mb4'
@@ -217,6 +227,9 @@ def run_scan(task_id, app_context):
         result_filename = f"scan_{task.id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.json"
         result_filepath = os.path.join(app.config['SCAN_RESULTS_FOLDER'], result_filename)
 
+        # 确保输出目录存在
+        os.makedirs(app.config['SCAN_RESULTS_FOLDER'], exist_ok=True)
+
         tags_list = task.tags.split(',')
         rules_to_run = set()
         rules = YamlRule.query.join(YamlRule.tags).filter(
@@ -225,30 +238,36 @@ def run_scan(task_id, app_context):
         ).all()
 
         for rule in rules:
-            rules_to_run.add(rule.file_path)
+            if os.path.exists(rule.file_path):
+                rules_to_run.add(rule.file_path)
 
         if not rules_to_run:
             task.status = 'error'
-            task.error_log = f"错误: 找不到与标签 {task.tags} 关联的已公开规则。"
+            task.error_log = f"错误: 找不到与标签 {task.tags} 关联的已公开规则文件。"
             db.session.commit()
             print(task.error_log)
             return
 
         # --- 正确的命令构建逻辑 ---
         nuclei_path = get_nuclei_path()
+        
+        # 构建模板参数：逗号分隔的模板路径列表
+        template_args = ','.join(rules_to_run)
+        
         command = [
             nuclei_path,
             '-u', task.target_url,
-            '-jsonl', # 使用 -jsonl 标志以获得逐行 JSON 输出
-            '-o', result_filepath
+            '-jsonl',
+            '-o', result_filepath,
+            '-t', template_args  # 使用 -t 参数指定逗号分隔的模板路径
         ]
-        # 为每个模板文件单独添加一个 -t 参数
-        for rule_path in rules_to_run:
-            command.extend(['-t', rule_path])
-        # ---------------------------
+        
+        print(f"构建的 nuclei 命令: {' '.join(command)}")
+        print(f"模板参数: {template_args}")
 
         try:
-            subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8')
+            # 添加超时设置，避免扫描卡住
+            result = subprocess.run(command, check=True, capture_output=True, text=True, encoding='utf-8', timeout=300)  # 5分钟超时
             task.status = 'completed'
             task.result_file_path = result_filepath
 
@@ -270,6 +289,10 @@ def run_scan(task_id, app_context):
                 'templates': sorted(list(found_templates))
             })
 
+        except subprocess.TimeoutExpired:
+            task.status = 'error'
+            task.error_log = "错误: 扫描超时（5分钟）。"
+            print(f"扫描任务 {task.id} 超时")
         except FileNotFoundError:
             task.status = 'error'
             task.error_log = "错误: 'nuclei' 命令未找到。请确保 bin/nuclei.exe 存在。"
@@ -1617,6 +1640,111 @@ def reset_nuclei_settings():
         "msg": "Nuclei 设置已重置为默认值",
         "nuclei_path": DEFAULT_NUCLEI_PATH
     })
+
+
+@app.route('/api/settings/nuclei/update', methods=['POST'])
+@role_required(['admin'])
+def update_nuclei():
+    """更新 nuclei 到最新版本（仅管理员）"""
+    nuclei_path = get_nuclei_path()
+
+    print(f"[DEBUG] Nuclei 路径: {nuclei_path}")
+
+    if not os.path.isfile(nuclei_path):
+        error_msg = f"Nuclei 文件不存在: {nuclei_path}"
+        print(f"[ERROR] {error_msg}")
+        return jsonify({"msg": error_msg, "success": False}), 400
+
+    try:
+        # 检测操作系统
+        import platform
+        is_windows = platform.system() == 'Windows'
+        print(f"[DEBUG] 检测到操作系统: {'Windows' if is_windows else 'Linux/Unix'}")
+
+        # 构建更新命令
+        if is_windows:
+            # Windows: nuclei.exe -update
+            update_command = [nuclei_path, '-update']
+        else:
+            # Linux/Unix: nuclei -update
+            update_command = [nuclei_path, '-update']
+
+        print(f"[DEBUG] 执行 nuclei 更新命令: {' '.join(update_command)}")
+
+        # 执行更新命令
+        result = subprocess.run(
+            update_command,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            timeout=300  # 5分钟超时
+        )
+
+        print(f"[DEBUG] 更新命令返回码: {result.returncode}")
+        print(f"[DEBUG] 更新命令 stdout: {result.stdout}")
+        print(f"[DEBUG] 更新命令 stderr: {result.stderr}")
+
+        # 检查更新结果
+        if result.returncode == 0:
+            print("[INFO] Nuclei 更新命令执行成功")
+
+            # 更新成功，重新获取版本信息
+            version_result = subprocess.run(
+                [nuclei_path, '-version'],
+                capture_output=True,
+                text=True,
+                encoding='utf-8',
+                timeout=30
+            )
+
+            print(f"[DEBUG] 版本检查返回码: {version_result.returncode}")
+            print(f"[DEBUG] 版本检查 stdout: {version_result.stdout}")
+            print(f"[DEBUG] 版本检查 stderr: {version_result.stderr}")
+
+            new_version = ""
+            if version_result.returncode == 0:
+                version_output = version_result.stdout.strip() or version_result.stderr.strip()
+                version_output = strip_ansi_codes(version_output)
+                lines = version_output.split('\n')
+                version_line = next((l for l in lines if 'Version' in l), version_output.split('\n')[0] if version_output else '')
+                new_version = version_line.strip()
+                print(f"[INFO] 新版本: {new_version}")
+
+            return jsonify({
+                "msg": "Nuclei 更新成功",
+                "success": True,
+                "new_version": new_version,
+                "output": result.stdout + result.stderr
+            })
+        else:
+            error_msg = f"Nuclei 更新失败，返回码: {result.returncode}"
+            print(f"[ERROR] {error_msg}")
+            print(f"[ERROR] stdout: {result.stdout}")
+            print(f"[ERROR] stderr: {result.stderr}")
+
+            return jsonify({
+                "msg": error_msg,
+                "success": False,
+                "error": result.stderr.strip() if result.stderr else result.stdout.strip(),
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode
+            }), 400
+
+    except subprocess.TimeoutExpired:
+        error_msg = "Nuclei 更新超时（5分钟）"
+        print(f"[ERROR] {error_msg}")
+        return jsonify({"msg": error_msg, "success": False}), 400
+    except FileNotFoundError:
+        error_msg = f"Nuclei 命令无法执行: {nuclei_path}"
+        print(f"[ERROR] {error_msg}")
+        return jsonify({"msg": error_msg, "success": False}), 400
+    except Exception as e:
+        error_msg = f"更新失败: {str(e)}"
+        print(f"[ERROR] {error_msg}")
+        import traceback
+        print(f"[ERROR] 完整错误信息:\n{traceback.format_exc()}")
+        return jsonify({"msg": error_msg, "success": False, "traceback": traceback.format_exc()}), 400
 
 
 # --- SSL/HTTPS 证书管理 ---
