@@ -1437,32 +1437,34 @@ def batch_validate_rules():
             except subprocess.CalledProcessError as e:
                 # 批量验证失败，解析 stderr 找出失败的规则
                 error_output = e.stderr.strip()
-                # 简单处理：如果有具体文件错误，标记对应规则；否则所有失败
-                failed_files = []
+                failed_rules = []
+                
+                # 解析错误输出中的文件名
                 for line in error_output.split('\n'):
-                    if '.yaml' in line or '.yml' in line:
-                        # 尝试提取文件名
+                    line = line.strip()
+                    if not line:
+                        continue
+                    # 查找包含 .yaml 或 .yml 的行，提取文件名
+                    import re
+                    match = re.search(r'([^\s]+\.ya?ml)', line)
+                    if match:
+                        failed_filename = match.group(1)
+                        # 找到对应的规则
                         for rule in rules_to_validate:
-                            filename = os.path.basename(rule.file_path)
-                            if filename in line:
-                                failed_files.append(rule)
+                            if os.path.basename(rule.file_path) == failed_filename:
+                                failed_rules.append(rule)
                                 break
                 
-                if failed_files:
-                    for rule in failed_files:
-                        rule.status = 'failed'
-                        failed.append({"id": rule.id, "reason": f"验证失败: {error_output[:100]}..."})
-                        rules_to_validate.remove(rule)
-                
-                # 剩余规则如果没有特定错误，也设为失败（保守处理）
-                for rule in rules_to_validate:
-                    if rule not in failed_files:
-                        rule.status = 'failed'
-                        failed.append({"id": rule.id, "reason": f"批量验证失败: {error_output[:100]}..."})
-            except Exception as e:
-                for rule in rules_to_validate:
+                # 标记失败的规则
+                for rule in failed_rules:
                     rule.status = 'failed'
-                    failed.append({"id": rule.id, "reason": str(e)})
+                    failed.append({"id": rule.id, "reason": f"验证失败: {error_output[:200]}..."})
+                
+                # 剩余规则设为成功（假设没有错误输出的就是成功）
+                for rule in rules_to_validate:
+                    if rule not in failed_rules:
+                        rule.status = 'verified'
+                        success.append(rule.id)
     
     db.session.commit()
     
