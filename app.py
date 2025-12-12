@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # 版本号
-__version__ = '2.0.8'
+__version__ = '2.2.5'
 
 import os
 import subprocess
@@ -1457,13 +1457,17 @@ def batch_validate_rules():
                         continue
                     # 查找包含 .yaml 或 .yml 的行，提取文件名
                     import re
-                    match = re.search(r'([^\s]+\.ya?ml)', line)
+                    match = re.search(r'\\([^\\]+\.ya?ml)', line)
                     if match:
                         failed_filename = match.group(1)
+                        print(f"[DEBUG] Found failed file: {failed_filename}")
                         # 找到对应的规则
                         for rule in rules_to_validate:
-                            if os.path.basename(rule.file_path) == failed_filename:
+                            rule_basename = os.path.basename(rule.file_path)
+                            print(f"[DEBUG] Checking rule basename: {rule_basename}")
+                            if rule_basename == failed_filename:
                                 failed_rules.append(rule)
+                                print(f"[DEBUG] Matched failed rule: {rule.id}")
                                 break
                 
                 # 标记失败的规则
