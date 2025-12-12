@@ -802,6 +802,10 @@ document.addEventListener('DOMContentLoaded', () => {
             batchValidateBtn.disabled = true;
             batchValidateBtn.textContent = '验证中...';
             
+            // 禁用所有单个验证按钮
+            const validateButtons = document.querySelectorAll('button[onclick*="validateRule"]');
+            validateButtons.forEach(btn => btn.disabled = true);
+            
             const result = await api.batchValidate(ids);
             
             const successCount = result.success ? result.success.length : 0;
@@ -821,6 +825,10 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             batchValidateBtn.disabled = false;
             batchValidateBtn.textContent = '批量验证';
+            
+            // 启用所有单个验证按钮
+            const validateButtons = document.querySelectorAll('button[onclick*="validateRule"]');
+            validateButtons.forEach(btn => btn.disabled = false);
         }
     });
 
