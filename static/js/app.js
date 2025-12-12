@@ -789,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // 批量验证（分批处理，每批10条）
+    // 批量验证
     batchValidateBtn?.addEventListener('click', async () => {
         if (selectedRuleIds.size === 0) {
             showToast('请先选择要验证的规则', 'warning');
@@ -797,54 +797,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         const ids = Array.from(selectedRuleIds);
-        const batchSize = 10; // 每批10条
-        const totalBatches = Math.ceil(ids.length / batchSize);
-        let totalSuccess = 0;
-        let totalFailed = 0;
-        let allFailed = [];
         
         try {
             batchValidateBtn.disabled = true;
+            batchValidateBtn.textContent = '验证中...';
             
-            for (let i = 0; i < totalBatches; i++) {
-                const start = i * batchSize;
-                const end = Math.min(start + batchSize, ids.length);
-                const batchIds = ids.slice(start, end);
-                
-                // 更新按钮显示进度
-                batchValidateBtn.textContent = `验证中 (${end}/${ids.length})...`;
-                
-                try {
-                    const result = await api.batchValidate(batchIds);
-                    totalSuccess += result.success ? result.success.length : 0;
-                    if (result.failed && result.failed.length > 0) {
-                        totalFailed += result.failed.length;
-                        allFailed = allFailed.concat(result.failed);
-                    }
-                    
-                    // 每批完成后刷新规则列表，实时更新状态
-                    await loadRules();
-                } catch (error) {
-                    console.error(`批次 ${i + 1} 验证失败:`, error);
-                    totalFailed += batchIds.length;
-                }
-                
-                // 每批次间隔100ms，避免服务器压力过大
-                if (i < totalBatches - 1) {
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                }
-            }
+            const result = await api.batchValidate(ids);
             
-            showToast(`批量验证完成！成功 ${totalSuccess} 个${totalFailed > 0 ? '，失败 ' + totalFailed + ' 个' : ''}`, 
-                totalFailed > 0 ? 'warning' : 'success', 3000);
+            const successCount = result.success ? result.success.length : 0;
+            const failedCount = result.failed ? result.failed.length : 0;
+            const skippedCount = result.skipped ? result.skipped.length : 0;
+            
+            showToast(result.msg, successCount > 0 ? 'success' : 'warning');
             
             // 清空选择并刷新
             selectedRuleIds.clear();
             updateBatchToolbar();
             loadRules();
+            
         } catch (error) {
-            console.error('批量验证错误:', error);
-            showToast('批量验证失败: ' + (error.message || '未知错误'), 'error');
+            console.error('批量验证失败:', error);
+            showToast('批量验证失败，请重试', 'error');
         } finally {
             batchValidateBtn.disabled = false;
             batchValidateBtn.textContent = '批量验证';
