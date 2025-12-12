@@ -1103,6 +1103,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // 渲染扫描详情中的标签高亮
+    function renderScanDetails(tags) {
+        const detailsContainer = document.getElementById('scan-details-container');
+        detailsContainer.innerHTML = tags.map(tag => `<span class='highlight-tag'>${tag}</span>`).join(', ');
+    }
     // --- Event Handlers: Users ---
     filterUsersBtn?.addEventListener('click', () => loadUsers(1));
     
