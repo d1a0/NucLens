@@ -1094,8 +1094,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await api.submitScan(targetUrl, tags);
             showToast('扫描任务已成功提交！', 'success');
-            scanTargetUrlInput.value = '';
-            // 重置标签选择
+            scanTargetUrlInput.value = '';  // 清空 URL
+            // 清空选中的标签
             selectedScanTagsContainer.innerHTML = '';
             renderAvailableTags('');
             loadScans();
@@ -1601,16 +1601,20 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             row.innerHTML = `
-                <td>${scan.id}</td>
-                <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${scan.target_url}">${scan.target_url}</td>
-                <td class="tags-cell">${tagsHtml}</td>
-                <td><span class="status status-${scan.status}">${scan.status}</span></td>
-                <td>${scan.initiated_by}</td>
-                <td>${new Date(scan.created_at).toLocaleString()}</td>
-                <td>${findingsCount}</td>
-                <td><button class="action-btn btn-secondary btn-small">详情</button></td>
+                <td class="col-id">${scan.id}</td>
+                <td class="col-url" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;" title="${scan.target_url}">${scan.target_url}</td>
+                <td class="col-tags tags-cell">${tagsHtml}</td>
+                <td class="col-status"><span class="status status-${scan.status}">${scan.status}</span></td>
+                <td class="col-user">${scan.initiated_by}</td>
+                <td class="col-time">${new Date(scan.created_at + 'Z').toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'})}</td>
+                <td class="col-hits">${findingsCount}</td>
+                <td class="col-actions">
+                    <button class="action-btn btn-secondary btn-small">详情</button>
+                    <button class="action-btn action-btn-danger btn-small">删除</button>
+                </td>
             `;
-            row.querySelector('button').onclick = () => showScanDetails(scan.id);
+            row.querySelector('.action-btn.btn-secondary').onclick = () => showScanDetails(scan.id);
+            row.querySelector('.action-btn.action-btn-danger').onclick = () => deleteScanTask(scan.id);
             scansTableBody.appendChild(row);
         });
     }
@@ -1750,6 +1754,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tagEl.appendChild(removeBtn);
         selectedScanTagsContainer.appendChild(tagEl);
         renderAvailableTags('');
+        // 聚焦到输入框
+        scanTagsInput.focus();
     }
 
     // --- Action Handlers ---
@@ -1961,13 +1967,13 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const summary = await api.getScanSummary(scanId);
             const tags = Array.isArray(summary.tags) ? summary.tags : (summary.tags ? summary.tags.split(',') : []);
-            const tagsHtml = tags.length > 0 ? tags.map(tag => `<span class="tag-item" style="display: inline-block; margin: 2px 4px; padding: 2px 6px; background: #e6f7ff; border: 1px solid #91d5ff; border-radius: 4px; font-size: 0.8rem;">${tag}</span>`).join('') : '-';
+            const tagsHtml = tags.map(tag => `<span class="tag-item">${tag}</span>`).join('');
 
             let html = `
                 <div style="margin-bottom: 1rem;">
                     <p><strong>目标:</strong> ${summary.target_url || '-'}</p>
                     <p><strong>状态:</strong> <span class="status status-${summary.status}">${summary.status}</span></p>
-                    <p><strong>标签:</strong> ${tagsHtml}</p>
+                    <p><strong>标签:</strong> ${tagsHtml || '-'}</p>
                 </div>
             `;
 
@@ -2004,6 +2010,21 @@ document.addEventListener('DOMContentLoaded', () => {
             modal.style.display = 'flex';
         } catch (error) {
             console.error('获取扫描详情失败:', error);
+        }
+    }
+
+    async function deleteScanTask(scanId) {
+        if (!confirm('确定要删除这个扫描任务吗？此操作不可撤销。')) {
+            return;
+        }
+        
+        try {
+            await api.request(`/scan/${scanId}`, { method: 'DELETE' });
+            showToast('扫描任务已删除', 'success');
+            loadScans();
+        } catch (error) {
+            console.error('删除扫描任务失败:', error);
+            showToast('删除失败，请重试', 'error');
         }
     }
 
@@ -2385,6 +2406,68 @@ document.addEventListener('DOMContentLoaded', () => {
             } finally {
                 testNucleiBtn.disabled = false;
                 testNucleiBtn.textContent = '测试 Nuclei';
+            }
+        });
+    }
+
+    // 更新 Nuclei
+    const updateNucleiBtn = document.getElementById('update-nuclei-btn');
+    if (updateNucleiBtn) {
+        updateNucleiBtn.addEventListener('click', async () => {
+            if (!confirm('确定要更新 Nuclei 到最新版本吗？这可能需要一些时间。')) return;
+
+            updateNucleiBtn.disabled = true;
+            updateNucleiBtn.textContent = '更新中...';
+
+            try {
+                const result = await api.request('/settings/nuclei/update', { method: 'POST' });
+                if (result.success) {
+                    showToast('Nuclei 更新成功', 'success');
+                    if (result.new_version) {
+                        document.getElementById('nuclei-version').textContent = result.new_version;
+                    }
+                    // 重新加载设置以更新状态
+                    loadSettings();
+                } else {
+                    // 显示详细错误信息
+                    let errorTitle = result.msg || '更新失败';
+                    let errorDetails = '';
+
+                    if (result.error) {
+                        errorDetails += `<strong>错误详情:</strong><br><pre>${escapeHtml(result.error)}</pre>`;
+                    }
+                    if (result.stdout) {
+                        errorDetails += `<strong>标准输出:</strong><br><pre>${escapeHtml(result.stdout)}</pre>`;
+                    }
+                    if (result.stderr) {
+                        errorDetails += `<strong>标准错误:</strong><br><pre>${escapeHtml(result.stderr)}</pre>`;
+                    }
+                    if (result.returncode !== undefined) {
+                        errorDetails += `<strong>返回码:</strong> ${result.returncode}<br>`;
+                    }
+                    if (result.traceback) {
+                        errorDetails += `<strong>调试信息:</strong><br><pre>${escapeHtml(result.traceback)}</pre>`;
+                    }
+
+                    console.error('Nuclei 更新失败详情:', result);
+
+                    // 使用modal显示详细错误
+                    modalTitle.textContent = errorTitle;
+                    modalBody.innerHTML = errorDetails || '无详细信息';
+                    modal.style.display = 'flex';
+
+                    showToast('更新失败，请查看详情', 'error');
+                }
+            } catch (error) {
+                console.error('Nuclei 更新请求失败:', error);
+                let errorMsg = '更新请求失败';
+                if (error.msg) {
+                    errorMsg += `: ${error.msg}`;
+                }
+                showToast(errorMsg, 'error');
+            } finally {
+                updateNucleiBtn.disabled = false;
+                updateNucleiBtn.textContent = '更新 Nuclei';
             }
         });
     }

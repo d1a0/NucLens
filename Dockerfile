@@ -54,8 +54,7 @@ COPY static/ static/
 COPY templates/ templates/
 
 # 创建必要目录
-RUN mkdir -p bin nuclei_rules scan_results data /var/run/mysqld /var/lib/mysql
-RUN chown -R mysql:mysql /var/run/mysqld /var/lib/mysql
+RUN mkdir -p bin nuclei_rules scan_results data
 
 # 创建符号链接使应用能找到 nuclei
 RUN ln -s /usr/local/bin/nuclei /app/bin/nuclei

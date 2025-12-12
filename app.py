@@ -1648,18 +1648,13 @@ def update_nuclei():
     """更新 nuclei 到最新版本（仅管理员）"""
     nuclei_path = get_nuclei_path()
 
-    print(f"[DEBUG] Nuclei 路径: {nuclei_path}")
-
     if not os.path.isfile(nuclei_path):
-        error_msg = f"Nuclei 文件不存在: {nuclei_path}"
-        print(f"[ERROR] {error_msg}")
-        return jsonify({"msg": error_msg, "success": False}), 400
+        return jsonify({"msg": "Nuclei 文件不存在", "success": False}), 400
 
     try:
         # 检测操作系统
         import platform
         is_windows = platform.system() == 'Windows'
-        print(f"[DEBUG] 检测到操作系统: {'Windows' if is_windows else 'Linux/Unix'}")
 
         # 构建更新命令
         if is_windows:
@@ -1668,8 +1663,6 @@ def update_nuclei():
         else:
             # Linux/Unix: nuclei -update
             update_command = [nuclei_path, '-update']
-
-        print(f"[DEBUG] 执行 nuclei 更新命令: {' '.join(update_command)}")
 
         # 执行更新命令
         result = subprocess.run(
@@ -1680,14 +1673,8 @@ def update_nuclei():
             timeout=300  # 5分钟超时
         )
 
-        print(f"[DEBUG] 更新命令返回码: {result.returncode}")
-        print(f"[DEBUG] 更新命令 stdout: {result.stdout}")
-        print(f"[DEBUG] 更新命令 stderr: {result.stderr}")
-
         # 检查更新结果
         if result.returncode == 0:
-            print("[INFO] Nuclei 更新命令执行成功")
-
             # 更新成功，重新获取版本信息
             version_result = subprocess.run(
                 [nuclei_path, '-version'],
@@ -1697,10 +1684,6 @@ def update_nuclei():
                 timeout=30
             )
 
-            print(f"[DEBUG] 版本检查返回码: {version_result.returncode}")
-            print(f"[DEBUG] 版本检查 stdout: {version_result.stdout}")
-            print(f"[DEBUG] 版本检查 stderr: {version_result.stderr}")
-
             new_version = ""
             if version_result.returncode == 0:
                 version_output = version_result.stdout.strip() or version_result.stderr.strip()
@@ -1708,7 +1691,6 @@ def update_nuclei():
                 lines = version_output.split('\n')
                 version_line = next((l for l in lines if 'Version' in l), version_output.split('\n')[0] if version_output else '')
                 new_version = version_line.strip()
-                print(f"[INFO] 新版本: {new_version}")
 
             return jsonify({
                 "msg": "Nuclei 更新成功",
@@ -1717,34 +1699,18 @@ def update_nuclei():
                 "output": result.stdout + result.stderr
             })
         else:
-            error_msg = f"Nuclei 更新失败，返回码: {result.returncode}"
-            print(f"[ERROR] {error_msg}")
-            print(f"[ERROR] stdout: {result.stdout}")
-            print(f"[ERROR] stderr: {result.stderr}")
-
             return jsonify({
-                "msg": error_msg,
+                "msg": "Nuclei 更新失败",
                 "success": False,
-                "error": result.stderr.strip() if result.stderr else result.stdout.strip(),
-                "stdout": result.stdout,
-                "stderr": result.stderr,
-                "returncode": result.returncode
+                "error": result.stderr.strip() if result.stderr else result.stdout.strip()
             }), 400
 
     except subprocess.TimeoutExpired:
-        error_msg = "Nuclei 更新超时（5分钟）"
-        print(f"[ERROR] {error_msg}")
-        return jsonify({"msg": error_msg, "success": False}), 400
+        return jsonify({"msg": "Nuclei 更新超时（5分钟）", "success": False}), 400
     except FileNotFoundError:
-        error_msg = f"Nuclei 命令无法执行: {nuclei_path}"
-        print(f"[ERROR] {error_msg}")
-        return jsonify({"msg": error_msg, "success": False}), 400
+        return jsonify({"msg": "Nuclei 命令无法执行", "success": False}), 400
     except Exception as e:
-        error_msg = f"更新失败: {str(e)}"
-        print(f"[ERROR] {error_msg}")
-        import traceback
-        print(f"[ERROR] 完整错误信息:\n{traceback.format_exc()}")
-        return jsonify({"msg": error_msg, "success": False, "traceback": traceback.format_exc()}), 400
+        return jsonify({"msg": f"更新失败: {str(e)}", "success": False}), 400
 
 
 # --- SSL/HTTPS 证书管理 ---

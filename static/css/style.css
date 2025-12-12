@@ -173,6 +173,8 @@ button, .btn {
 .btn-small {
     padding: 6px 12px;
     font-size: 0.85rem;
+    min-width: 50px;
+    text-align: center;
 }
 
 .btn-danger {
@@ -616,6 +618,43 @@ table td {
     line-height: 1;
 }
 
+/* ========== Scans Table ========== */
+.scans-table .col-id {
+    width: 5%;
+}
+
+.scans-table .col-url {
+    width: 20%;
+}
+
+.scans-table .col-tags {
+    width: 18%;
+}
+
+.scans-table .col-status {
+    width: 8%;
+    text-align: center;
+}
+
+.scans-table .col-user {
+    width: 8%;
+    text-align: center;
+}
+
+.scans-table .col-time {
+    width: 12%;
+}
+
+.scans-table .col-hits {
+    width: 6%;
+    text-align: center;
+}
+
+.scans-table .col-actions {
+    width: 150px;
+    text-align: center;
+}
+
 .tag-item {
     display: inline-flex;
     align-items: center;
@@ -823,8 +862,6 @@ table td {
     font-size: 0.8rem;
     margin-right: 6px;
     border-radius: 4px;
-    white-space: nowrap;
-    display: inline-block;
 }
 
 .action-btn:last-child {
@@ -1858,11 +1895,13 @@ table td {
     background: #f39c12;
     color: #fff;
     border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    font-size: 0.8rem;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
     cursor: pointer;
     white-space: nowrap;
+    transition: all 0.2s ease;
 }
 
 .https-toggle .btn-warning:hover {
