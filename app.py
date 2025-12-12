@@ -1524,7 +1524,7 @@ def batch_delete_rules():
 def get_settings():
     """获取系统设置（仅管理员）"""
     nuclei_path = SystemSettings.get('nuclei_path', DEFAULT_NUCLEI_PATH)
-    nuclei_platform = SystemSettings.get('nuclei_platform', 'windows')
+    nuclei_platform = SystemSettings.get('nuclei_platform', platform.system().lower())
     
     # 检查 nuclei 是否存在
     nuclei_exists = os.path.isfile(nuclei_path) if nuclei_path else False
