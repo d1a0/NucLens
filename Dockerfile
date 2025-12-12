@@ -22,10 +22,6 @@ RUN echo "deb https://mirrors.aliyun.com/debian bullseye main" > /etc/apt/source
     ca-certificates \
     gnupg \
     lsb-release && \
-    echo "安装 MariaDB" && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    mariadb-server \
-    mariadb-client && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # 使用最新版本，或根据需要固定为 3.6.0
