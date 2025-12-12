@@ -15,7 +15,8 @@ services:
       - ./scan_results:/app/scan_results
     restart: unless-stopped
     depends_on:
-      - mysql
+      mysql:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "sh", "-c", "protocol=$(python3 -c \"import config; print('https' if getattr(config, 'HTTPS_ENABLED', False) else 'http')\"); wget --no-verbose --tries=1 --spider $protocol://localhost:5001/"]
       interval: 30s
@@ -36,6 +37,10 @@ services:
     volumes:
       - mysql_data:/var/lib/mysql
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
 volumes:
   mysql_data:
