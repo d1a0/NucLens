@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # 版本号
-__version__ = '2.2.7'
+__version__ = '2.2.8'
 
 import os
 import subprocess
@@ -299,10 +299,16 @@ def run_scan(task_id, app_context):
             print(task.error_log)
         except subprocess.CalledProcessError as e:
             task.status = 'error'
-            # 同时捕获 stdout 和 stderr
-            error_output = f"Nuclei exited with a non-zero status.\n--- STDOUT ---\n{e.stdout}\n--- STDERR ---\n{e.stderr}"
-            task.error_log = error_output
-            print(f"运行 nuclei 扫描任务 {task.id} 时出错:\n{error_output}")
+            # 清理错误输出，只保留关键错误信息
+            error_lines = e.stderr.strip().split('\n')
+            # 查找包含 [FTL] 或 [ERR] 的行
+            key_errors = [line for line in error_lines if '[FTL]' in line or '[ERR]' in line]
+            if key_errors:
+                task.error_log = '\n'.join(key_errors)
+            else:
+                # 如果没有找到，保留最后几行
+                task.error_log = '\n'.join(error_lines[-3:]) if error_lines else "扫描失败"
+            print(f"运行 nuclei 扫描任务 {task.id} 时出错: {task.error_log}")
         except Exception as e:
             task.status = 'error'
             task.error_log = str(e)
